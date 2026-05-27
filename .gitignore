@@ -1,0 +1,23 @@
+# AI files
+.ai/
+.claude/settings.local.json
+.cursor/
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+*.workspace
+
+# OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Terraform files
+*.tfplan
+*.tfstate
+*.tfstate.backup
+**/.terraform
+**/.terraform.lock.hcl
+**/input.tfvars

@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tflint:
+    runs-on: ubuntu-latest
+    env:
+      PROVIDER_DIR: terraform-provider-kaleido
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: terraform-kaleido-modules
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.ORG_PAT }}
+          repository: "kaleido-io/terraform-provider-kaleido"
+          ref: main
+          fetch-depth: '1'
+          path: terraform-provider-kaleido
+
+      - name: Build Terraform Provider (main)
+        working-directory: terraform-provider-kaleido
+        run: make build
+
+      - name: Configure provider dev override
+        run: |
+          cat <<EOF > "${HOME}/.terraformrc"
+          provider_installation {
+            dev_overrides {
+              "registry.terraform.io/kaleido-io/kaleido" = "${{ github.workspace }}/${PROVIDER_DIR}"
+              "kaleido-io/kaleido" = "${{ github.workspace }}/${PROVIDER_DIR}"
+            }
+            direct {}
+          }
+          EOF
+
+      - uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+
+      - name: tflint modules/
+        working-directory: terraform-kaleido-modules
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          failed=0
+          for dir in modules/*/; do
+            echo "::group::tflint ${dir}"
+            pushd "${dir}" >/dev/null
+            tflint --init
+            tflint --recursive || failed=1
+            popd >/dev/null
+            echo "::endgroup::"
+          done
+          exit "${failed}"
+
+      - name: tflint examples/
+        working-directory: terraform-kaleido-modules
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          failed=0
+          for dir in examples/*/; do
+            [[ "${dir}" == examples/v1.2.x/ ]] && continue
+            echo "::group::tflint ${dir}"
+            pushd "${dir}" >/dev/null
+            tflint --init
+            tflint --recursive || failed=1
+            popd >/dev/null
+            echo "::endgroup::"
+          done
+          exit "${failed}"
