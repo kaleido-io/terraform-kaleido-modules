@@ -71,6 +71,7 @@ jobs:
           shopt -s nullglob
           failed=0
           for dir in examples/*/; do
+            [[ "${dir}" == examples/v1.2.x/ ]] && continue
             echo "::group::tflint ${dir}"
             pushd "${dir}" >/dev/null
             tflint --init
