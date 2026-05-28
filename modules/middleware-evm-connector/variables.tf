@@ -9,6 +9,18 @@ variable "stack_name" {
   description = "Name of the EVMConnectorStack."
 }
 
+variable "runtime_size" {
+  type        = string
+  default     = "Small"
+  description = "Size of the EVMConnectorRuntime."
+}
+
+variable "runtime_zone" {
+  type        = string
+  default     = null
+  description = "Zone of the EVMConnectorRuntime."
+}
+
 variable "connector_name" {
   type        = string
   default     = "evm-connector"
@@ -18,6 +30,12 @@ variable "connector_name" {
 variable "key_manager_service_id" {
   type        = string
   description = "ID of the KeyManager service used to sign EVM transactions."
+}
+
+variable "database_name" {
+  type        = string
+  default     = null
+  description = "Optional external database name for the EVMConnector service. Required only on platform instances configured for externally-provisioned databases; omit for managed-database instances."
 }
 
 # ─── Service-level config ─────────────────────────────────────────────────────
@@ -40,7 +58,8 @@ variable "jsonrpc_auth" {
     password = string
   })
   default     = null
-  description = "Optional basic auth credentials for the JSON-RPC endpoint."
+  sensitive   = true
+  description = "Optional basic-auth credentials for the JSON-RPC endpoint. When set, the module registers them as a credSet named 'rpc_auth' on the EVMConnector service and references it from the service config (auth.credSetRef = \"rpc_auth\"). The upstream config schema does not allow username/password inlined under auth."
 }
 
 variable "ecosystem" {

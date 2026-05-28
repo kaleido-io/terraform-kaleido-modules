@@ -34,7 +34,8 @@ variable "rpc_auth" {
     password = string
   })
   default     = null
-  description = "Basic auth credentials for the Bitcoin Core RPC endpoint."
+  sensitive   = true
+  description = "Optional basic-auth credentials for the Bitcoin Core RPC endpoint. When set, the module registers them as a credSet named 'rpc_auth' on the BTCConnector service and references it from the service config (auth.credSetRef = \"rpc_auth\"). The upstream config schema does not allow username/password inlined under auth."
 }
 
 variable "ecosystem" {

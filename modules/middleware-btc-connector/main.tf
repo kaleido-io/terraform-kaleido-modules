@@ -27,8 +27,22 @@ resource "kaleido_platform_service" "this" {
     var.ecosystem != null ? { ecosystem = var.ecosystem } : {},
     var.network   != null ? { network   = var.network   } : {},
     var.rpc_url   != null ? { url       = var.rpc_url   } : {},
-    var.rpc_auth  != null ? { auth      = var.rpc_auth  } : {},
+    # The upstream btc-connector-service-config schema rejects inlined
+    # username/password under `auth`; basic-auth credentials must be supplied
+    # via a credSet on the service. Reference the credSet by name here, and
+    # the actual values are set in `cred_sets` below.
+    var.rpc_auth  != null ? { auth      = { credSetRef = "rpc_auth" } } : {},
   ))
+
+  cred_sets = var.rpc_auth != null ? {
+    rpc_auth = {
+      type = "basic_auth"
+      basic_auth = {
+        username = var.rpc_auth.username
+        password = var.rpc_auth.password
+      }
+    }
+  } : {}
 }
 
 # ─── Config types + profiles ──────────────────────────────────────────────────
@@ -94,8 +108,11 @@ resource "kaleido_platform_connector_standard_api" "bitcoin" {
   environment = var.environment_id
   service     = kaleido_platform_service.this.id
   name        = "bitcoin"
+  # Keys are connector-flow TYPES (as declared by the upstream bitcoin
+  # standard-api template's subflowBindingTypes values), not binding names.
+  # The template's `resolve` and `submit` bindings both require a flow of
+  # type `submission`.
   flow_type_bindings = {
-    resolve = kaleido_platform_connector_flow.submission.name
-    submit  = kaleido_platform_connector_flow.submission.name
+    submission = kaleido_platform_connector_flow.submission.name
   }
 }

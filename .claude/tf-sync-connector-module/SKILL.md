@@ -119,12 +119,7 @@ Re-derive these from upstream every sync:
   `<upstream>/<proto>/connector_stream_factories/<factoryName>.yaml`'s `configType:`
   field — the standard stream binds to the config profile of that config type.
 
-## Step 6 — Update `.ai/plan.md` if the resource graph changed
-
-The plan file lists the exact resource counts for each protocol. If a sync adds or
-removes a resource, update that file too.
-
-## Step 7 — Do not leak the upstream path
+## Step 6 — Do not leak the upstream path
 
 After the sync, double-check none of these files contains the upstream path or repo
 name:

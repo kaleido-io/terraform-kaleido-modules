@@ -64,18 +64,6 @@ resource "kaleido_platform_service" "contracts_service" {
   database_name = var.databases != null ? var.databases.cms_db : null
 }
 
-resource "kaleido_platform_cms_build" "erc20" {
-  environment = kaleido_platform_environment.env_0.id
-  service = kaleido_platform_service.contracts_service.id
-  type = "precompiled"
-  name = "ERC20"
-  path = "Samples"
-  precompiled = {
-    abi = file("${path.module}/erc20.abi.json")
-    bytecode = file("${path.module}/erc20.bytecode.hex")
-  }
-}
-
 ## FireFly v2 workflow engine
 
 resource "kaleido_platform_runtime" "workflow_engine_runtime" {
@@ -88,21 +76,124 @@ resource "kaleido_platform_runtime" "workflow_engine_runtime" {
 resource "kaleido_platform_service" "workflow_engine_service" {
   type = "WorkflowEngine"
   name = "flows"
-  environment = kaleido_platform_environment.env_0.id 
+  environment = kaleido_platform_environment.env_0.id
   runtime = kaleido_platform_runtime.workflow_engine_runtime.id
   config_json = jsonencode({})
 
   database_name = var.databases != null ? var.databases.wfe_db : null
 }
 
-## Chain infrastructure: Besu testnet
+## Chain infrastructure: single-node Besu network
 
-## Web3 middleware: EVM connector - Ethereum Sepolia
+resource "kaleido_platform_stack" "besu_stack" {
+  environment = kaleido_platform_environment.env_0.id
+  name        = "besu"
+  type        = "chain_infrastructure"
+  network_id  = kaleido_platform_network.besu_network.id
+}
 
-module "evm" {
-  source = "git@github.com:kaleido-io/terraform-kaleido-modules.git//modules/middleware-evm-connector?ref=main"
-  environment_id = kaleido_platform_environment.env_0.id
+resource "kaleido_platform_network" "besu_network" {
+  type        = "Besu"
+  name        = "besu"
+  environment = kaleido_platform_environment.env_0.id
+  config_json = jsonencode({
+    bootstrapOptions = {
+      blockConfigFlags = {
+        zeroBaseFee = true
+      }
+      eipBlockConfig = {
+        shanghaiTime = 0
+      }
+      qbft = {
+        blockperiodseconds = 2
+      }
+    }
+  })
+}
+
+resource "kaleido_platform_runtime" "besu_node_runtime" {
+  type        = "BesuNode"
+  name        = "besu-node-1"
+  environment = kaleido_platform_environment.env_0.id
+  stack_id    = kaleido_platform_stack.besu_stack.id
+  config_json = jsonencode({})
+}
+
+resource "kaleido_platform_service" "besu_node_service" {
+  type        = "BesuNode"
+  name        = "besu-node-1"
+  environment = kaleido_platform_environment.env_0.id
+  runtime     = kaleido_platform_runtime.besu_node_runtime.id
+  stack_id    = kaleido_platform_stack.besu_stack.id
+  config_json = jsonencode({
+    network = {
+      id = kaleido_platform_network.besu_network.id
+    }
+  })
+}
+
+resource "kaleido_platform_runtime" "besu_gateway_runtime" {
+  type        = "EVMGateway"
+  name        = "besu-gateway"
+  environment = kaleido_platform_environment.env_0.id
+  stack_id    = kaleido_platform_stack.besu_stack.id
+  config_json = jsonencode({})
+}
+
+resource "kaleido_platform_service" "besu_gateway_service" {
+  type        = "EVMGateway"
+  name        = "besu-gateway"
+  environment = kaleido_platform_environment.env_0.id
+  runtime     = kaleido_platform_runtime.besu_gateway_runtime.id
+  stack_id    = kaleido_platform_stack.besu_stack.id
+  config_json = jsonencode({
+    network = {
+      id = kaleido_platform_network.besu_network.id
+    }
+  })
+}
+
+data "kaleido_platform_evm_netinfo" "besu" {
+  environment = kaleido_platform_environment.env_0.id
+  service     = kaleido_platform_service.besu_gateway_service.id
+  depends_on = [
+    kaleido_platform_service.besu_node_service,
+    kaleido_platform_service.besu_gateway_service,
+  ]
+}
+
+## Web3 middleware: EVM connector - Besu (Kaleido-managed)
+
+module "evm_besu" {
+  source                 = "../../modules/middleware-evm-connector"
+  environment_id         = kaleido_platform_environment.env_0.id
   key_manager_service_id = kaleido_platform_service.keys_service.id
+  stack_name             = "evm-besu"
+  runtime_size           = "Medium"
+  connector_name         = "evm-besu-connector"
+  database_name          = var.databases != null ? var.databases.evm_besu_db : null
+  evm_gateway_service_id = kaleido_platform_service.besu_gateway_service.id
+  ecosystem = {
+    name        = "besu"
+    displayName = "Besu"
+  }
+  network = {
+    name        = "besu"
+    displayName = "Besu"
+    chainId     = tostring(data.kaleido_platform_evm_netinfo.besu.chain_id)
+  }
+}
+
+## Web3 middleware: EVM connector - Ethereum Sepolia (external JSON-RPC)
+
+module "evm_sepolia" {
+  count = var.evm_jsonrpc_url != null ? 1 : 0
+  source                 = "../../modules/middleware-evm-connector"
+  environment_id         = kaleido_platform_environment.env_0.id
+  key_manager_service_id = kaleido_platform_service.keys_service.id
+  stack_name             = "evm-sepolia"
+  connector_name         = "evm-sepolia-connector"
+  database_name          = var.databases != null ? var.databases.evm_sepolia_db : null
   jsonrpc_url            = var.evm_jsonrpc_url
   jsonrpc_auth           = var.evm_jsonrpc_auth
   ecosystem              = var.evm_ecosystem
@@ -110,10 +201,11 @@ module "evm" {
   confirmations          = var.evm_confirmations
 }
 
-## Web3 middleware: BTC connector - Bitcoin Testnet 3
+## Web3 middleware: BTC connector - Bitcoin Testnet4
 
 module "btc" {
-  source = "../../modules/middleware-btc-connector" # TODO replace with git ref once we have a release
+  count = var.btc_rpc_url != null ? 1 : 0
+  source                 = "../../modules/middleware-btc-connector"
   environment_id         = kaleido_platform_environment.env_0.id
   key_manager_service_id = kaleido_platform_service.keys_service.id
   rpc_url                = var.btc_rpc_url

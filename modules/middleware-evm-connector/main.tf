@@ -12,6 +12,8 @@ resource "kaleido_platform_runtime" "this" {
   name        = var.connector_name
   environment = var.environment_id
   stack_id    = kaleido_platform_stack.this.id
+  size        = var.runtime_size
+  zone        = var.runtime_zone
   config_json = jsonencode({})
 }
 
@@ -28,8 +30,24 @@ resource "kaleido_platform_service" "this" {
     var.network                != null ? { network    = var.network    } : {},
     var.evm_gateway_service_id != null ? { evmGateway = { id = var.evm_gateway_service_id } } : {},
     var.jsonrpc_url            != null ? { url        = var.jsonrpc_url } : {},
-    var.jsonrpc_auth           != null ? { auth       = var.jsonrpc_auth } : {},
+    # The upstream evm-connector-service-config schema rejects inlined
+    # username/password under `auth`; basic-auth credentials must be supplied
+    # via a credSet on the service. Reference the credSet by name here, and
+    # the actual values are set in `cred_sets` below.
+    var.jsonrpc_auth           != null ? { auth       = { credSetRef = "rpc_auth" } } : {},
   ))
+
+  cred_sets = var.jsonrpc_auth != null ? {
+    rpc_auth = {
+      type = "basic_auth"
+      basic_auth = {
+        username = var.jsonrpc_auth.username
+        password = var.jsonrpc_auth.password
+      }
+    }
+  } : {}
+
+  database_name = var.database_name
 }
 
 # ─── Config types (template ensure / version pin) ─────────────────────────────
@@ -123,10 +141,12 @@ resource "kaleido_platform_connector_standard_api" "evm" {
   environment = var.environment_id
   service     = kaleido_platform_service.this.id
   name        = "evm"
+  # Keys are connector-flow TYPES (as declared by the upstream evm standard-api
+  # template's subflowBindingTypes values), not binding names. The template's
+  # `resolve` and `submit` bindings both require a flow of type `submission`.
   flow_type_bindings = {
-    resolve = kaleido_platform_connector_flow.submission.name
-    submit  = kaleido_platform_connector_flow.submission.name
-    query   = kaleido_platform_connector_flow.query.name
+    submission = kaleido_platform_connector_flow.submission.name
+    query      = kaleido_platform_connector_flow.query.name
   }
 }
 

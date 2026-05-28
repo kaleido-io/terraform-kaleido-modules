@@ -4,16 +4,18 @@ variable "environment_name" {
 
 variable "databases" {
   type = object({
-    wfe_db           = string
-    cms_db           = string
-    kms_db           = string
-    bis_db           = string
-    ecs_db           = string
-    ams_db           = string
-    wms_db           = string
-    pms_db           = string
+    kms_db            = string
+    cms_db            = string
+    wfe_db            = string
+    evm_besu_db       = string
+    evm_sepolia_db    = string
+    btc_db            = string
+    ams_db            = string
+    wms_db            = string
+    pms_db            = string
   })
-  default = null
+  default     = null
+  description = "Optional external database names per service. Required only on platform instances configured for externally-provisioned databases; omit (null) for managed-database instances."
 }
 
 variable "kaleido_platform_api" {
@@ -33,6 +35,7 @@ variable "kaleido_platform_password" {
 
 variable "evm_jsonrpc_url" {
   type        = string
+  default     = null
   description = "JSON-RPC URL for the Ethereum Sepolia endpoint the EVM connector should target."
 }
 
@@ -93,7 +96,8 @@ variable "evm_confirmations" {
 
 variable "btc_rpc_url" {
   type        = string
-  description = "Bitcoin Core RPC URL for the Bitcoin Testnet3 endpoint the BTC connector should target."
+  default     = null
+  description = "Bitcoin Core RPC URL for the Bitcoin Signet endpoint the BTC connector should target."
 }
 
 variable "btc_rpc_auth" {
@@ -112,8 +116,8 @@ variable "btc_network" {
     displayName = optional(string)
   })
   default = {
-    name        = "bitcoin-testnet3"
-    displayName = "Bitcoin Testnet3"
+    name        = "testnet4"
+    displayName = "Bitcoin Testnet4"
   }
   description = "Network metadata for the BTC connector."
 }
@@ -128,7 +132,7 @@ variable "btc_fee_rate" {
       }
     }
   }
-  description = "btc.feeRate profile passed to the BTC connector. Defaults to a fixed 1 sat/vB rate suitable for Testnet3 application testing."
+  description = "btc.feeRate profile passed to the BTC connector. Defaults to a fixed 1 sat/vB rate suitable for Testnet4 application testing."
 }
 
 variable "btc_monitoring" {
@@ -142,5 +146,5 @@ variable "btc_monitoring" {
     staleTimeout          = "5m"
     monitoringInterval    = "2s"
   }
-  description = "btc.monitoring profile passed to the BTC connector. Defaults tuned for Testnet3 with 1 required confirmation."
+  description = "btc.monitoring profile passed to the BTC connector. Defaults tuned for Testnet4 with 1 required confirmation."
 }
