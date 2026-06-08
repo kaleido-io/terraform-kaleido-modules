@@ -264,5 +264,7 @@ resource "kaleido_platform_service" "block_indexer_service" {
       id = kaleido_platform_service.evm_gateway_service.id
     }
   })
-  hostnames = { "${var.block_indexer_hostname}" = ["ui", "rest"] }
+  hostnames = { (var.block_indexer_hostname) = ["ui", "rest"] }
+
+  depends_on = [data.kaleido_platform_evm_netinfo.besu]
 }
