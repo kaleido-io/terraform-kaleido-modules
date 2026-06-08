@@ -106,7 +106,7 @@ resource "kaleido_platform_service" "transaction_manager_service" {
   })
 }
 
-## Firefly V1.x - Gateway Mode 
+## Firefly - Gateway Mode 
 
 resource "kaleido_platform_runtime" "firefly_runtime" {
   type = "FireFly"
