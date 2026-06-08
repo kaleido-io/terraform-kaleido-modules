@@ -199,13 +199,31 @@ resource "kaleido_platform_service" "evm_gateway_service" {
   })
 }
 
-data "kaleido_platform_evm_netinfo" "besu" {
+## Block Indexer 
+
+resource "kaleido_platform_runtime" "block_indexer_runtime" {
+  type = "BlockIndexer"
+  name = var.block_indexer_name
   environment = kaleido_platform_environment.env.id
-  service     = kaleido_platform_service.evm_gateway_service.id
-  depends_on = [
-    kaleido_platform_service.besu_node_service,
-    kaleido_platform_service.evm_gateway_service,
-  ]
+  config_json = jsonencode({})
+}   
+
+resource "kaleido_platform_service" "block_indexer_service" {
+  type = "BlockIndexer"
+  name = var.block_indexer_name
+  environment = kaleido_platform_environment.env.id
+  runtime = kaleido_platform_runtime.block_indexer_runtime.id
+  database_name = var.databases != null ? var.databases.bis_db : null
+  config_json = jsonencode({
+    contractManager = {
+      id = kaleido_platform_service.contracts_service.id
+    }
+    evmGateway = {
+      id = kaleido_platform_service.evm_gateway_service.id
+    }
+  })
+  hostnames = { (var.block_indexer_hostname) = ["ui", "rest"] }
+
 }
 
 ## Digital assets: tokenization stack
@@ -238,33 +256,4 @@ resource "kaleido_platform_service" "tokenization_service" {
   stack_id = kaleido_platform_stack.tokenization_stack.id
 
   database_name = var.databases != null ? var.databases.ams_db : null
-}
-
-
-## Block Indexer 
-
-resource "kaleido_platform_runtime" "block_indexer_runtime" {
-  type = "BlockIndexer"
-  name = var.block_indexer_name
-  environment = kaleido_platform_environment.env.id
-  config_json = jsonencode({})
-}   
-
-resource "kaleido_platform_service" "block_indexer_service" {
-  type = "BlockIndexer"
-  name = var.block_indexer_name
-  environment = kaleido_platform_environment.env.id
-  runtime = kaleido_platform_runtime.block_indexer_runtime.id
-  database_name = var.databases != null ? var.databases.bis_db : null
-  config_json = jsonencode({
-    contractManager = {
-      id = kaleido_platform_service.contracts_service.id
-    }
-    evmGateway = {
-      id = kaleido_platform_service.evm_gateway_service.id
-    }
-  })
-  hostnames = { (var.block_indexer_hostname) = ["ui", "rest"] }
-
-  depends_on = [data.kaleido_platform_evm_netinfo.besu]
 }
