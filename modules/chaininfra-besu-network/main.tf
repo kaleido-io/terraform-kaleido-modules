@@ -8,7 +8,10 @@ locals {
 
   bootstrap_options = merge(
     {
-      qbft             = var.qbft
+      qbft             = {
+        for k, v in var.qbft : k => v
+        if v != null
+      }
       eipBlockConfig   = var.eip_block_config
       blockConfigFlags = var.block_config_flags
     },
@@ -17,8 +20,8 @@ locals {
     var.target_gas_limit != null ? { targetGasLimit = var.target_gas_limit } : {},
   )
 
-  network_config = local.use_inline_genesis ? {} : merge(
-    var.chain_id != null ? { chainID = var.chain_id } : {},
+  network_config = merge(
+    !local.use_inline_genesis && var.chain_id != null ? { chainID = var.chain_id } : {},
     { bootstrapOptions = local.bootstrap_options },
   )
 }
