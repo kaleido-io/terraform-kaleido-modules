@@ -33,6 +33,8 @@ module "besu_network" {
     "0x12F62772C4652280d06E64CfBC9033d409559aD4" = "0x111111111111"
   }
 
+  genesis_json = var.genesis_json != null ? file(var.genesis_json) : null
+
   qbft = {
     blockperiodseconds = 10
     epochlength = 1000
@@ -49,7 +51,8 @@ module "besu_validator_nodes" {
   node_name      = "besu-validator-${count.index}"
   signer         = true
   stack_id       = module.besu_network.stack_id
-  count = 1
+  count = var.validator_count
+  node_key = length(var.validator_node_keys) > 0 && count.index < length(var.validator_node_keys) ? var.validator_node_keys[count.index] : null
 }
 
 module "besu_rpc_nodes" {
@@ -61,7 +64,7 @@ module "besu_rpc_nodes" {
   signer         = false
   stack_id       = module.besu_network.stack_id
   apis_enabled   = ["TRACE"]
-  count = 1
+  count = var.rpc_node_count
 }
 
 # EVM Gateway
@@ -87,4 +90,16 @@ module "block_indexer" {
   evm_gateway_service_id = module.gateway.service_id
   contract_manager_service_id = kaleido_platform_service.contract_manager_service.id
   hostname = "besu-block-indexer"
+}
+
+# Blockchain Application Firewall
+
+module "baf" {
+  source = "../../modules/chaininfra-baf"
+
+  environment_id = kaleido_platform_environment.env.id
+  network_id     = module.besu_network.network_id
+  stack_name     = "${var.stack_name}-baf"
+  policies       = var.baf_policies
+  count = var.baf_enabled ? 1 : 0
 }

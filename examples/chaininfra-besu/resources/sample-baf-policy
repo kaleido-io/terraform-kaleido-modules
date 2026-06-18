@@ -1,0 +1,32 @@
+package gateway_permission
+
+import future.keywords.if
+
+# Default to false for the allow result.
+default allow := false
+# Include intermediate results that make up the final "allow"
+default is_valid_method := false
+default signer_address_allowed := false
+
+# Allow only certain JSON/RPC methods to be invoked
+is_valid_method if ( {
+  "eth_call": true,
+  "eth_sendRawTransaction": true
+}[input.method] == true )
+
+# Extra checks for eth_sendRawTransaction calls.
+signer_address_allowed if input.method != "eth_sendRawTransaction"
+# Signer check only works if "Decode raw transactions" is enabled on the EVM Gateway,
+# causing raw transactions to be decoded within the gateway before gateway permissions
+# are applied.
+signer_address_allowed if ( {
+  "0x12F62772C4652280d06E64CfBC9033d409559aD4": true
+}[input.params[0].from] == true )
+
+# Allow if the name of the method is valid and the from address matches an expected address.
+# In this example the address is statically declared, but it could also be constructed
+# dynamically from values available in the identity context.
+allow {
+  is_valid_method
+  signer_address_allowed
+}

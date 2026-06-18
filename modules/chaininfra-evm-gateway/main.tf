@@ -30,4 +30,5 @@ resource "kaleido_platform_hostname" "this" {
   hostname = var.hostname
   endpoints = ["jsonrpc", "jsonrpcws", "graphql"]
   mtls = false
+  count = var.hostname != null ? 1 : 0
 }
