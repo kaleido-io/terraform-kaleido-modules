@@ -1,8 +1,30 @@
-# btc-connector
+# middleware-btc-connector
 
-Deploys a Bitcoin connector service (`BTCConnectorStack` + runtime + service) and the
-four config types, three config profiles, single submission flow, transaction-events
-stream factory, and Bitcoin standard API it ships with.
+Deploys a Bitcoin connector service (`BTCConnectorStack` + runtime + service) with
+config types, config profiles, a submission flow, transaction-events stream factory,
+and the Bitcoin standard API it ships with.
+
+## Required settings
+
+| Setting | Description |
+|---------|-------------|
+| `environment_id` | Kaleido environment to deploy the connector into |
+| `key_manager_service_id` | ID of the `KeyManager` service used to sign Bitcoin transactions |
+| `network` | Network metadata (`mainnet`, `testnet4`, `testnet`, or `signet`) |
+
+## Optional settings
+
+| Setting | Default | Usage |
+|---------|---------|-------|
+| `stack_name` | `btc` | Name of the `BTCConnectorStack` |
+| `connector_name` | `btc-connector` | Display name of the runtime and service |
+| `rpc_url` | `null` | Bitcoin Core RPC URL |
+| `rpc_auth` | `null` | Basic-auth credentials for the Bitcoin Core RPC endpoint (sensitive) |
+| `ecosystem` | `{ name = "bitcoin", displayName = "Bitcoin" }` | Ecosystem metadata |
+| `fee_rate` | `{}` | `btc.feeRate` — auto-increment, max fee cap, and fee source |
+| `assembly` | `{ changeOutputPosition = "last" }` | `btc.assembly` — change output position (`last` or `random`) |
+| `monitoring` | `{}` | `btc.monitoring` — confirmation count, polling interval, stale timeout |
+| `transaction_events` | `{}` | `btc.transactionEventsConfig` — event stream tuning |
 
 ## Usage
 
@@ -17,12 +39,6 @@ module "btc" {
 }
 ```
 
-Or with a sample `*.tfvars` file:
-
-```
-terraform apply -var-file=modules/btc-connector/examples/bitcoin-mainnet.tfvars
-```
-
 ## Ecosystem presets
 
 | File | Notes |
@@ -32,12 +48,14 @@ terraform apply -var-file=modules/btc-connector/examples/bitcoin-mainnet.tfvars
 | `bitcoin-testnet4.tfvars` | 2 confirmations, RPC fee estimation |
 | `bitcoin-signet.tfvars` | 1 confirmation, fixed 1 sat/vB fee |
 
-Adding a new network is a `*.tfvars` change — see the
-[`tf-sync-connector-module` skill](../../.claude/tf-sync-connector-module/SKILL.md).
-
 ## Outputs
 
-- `service_id`, `stack_id`, `runtime_id`
-- `submission_flow_name`, `standard_api_name`
-- `stream_factories` (map: `transaction_events`)
-- `config_profiles` (map: config type → profile ID)
+| Output | Description |
+|--------|-------------|
+| `service_id` | ID of the `BTCConnector` service |
+| `stack_id` | ID of the `BTCConnectorStack` |
+| `runtime_id` | ID of the `BTCConnector` runtime |
+| `submission_flow_name` | Name of the deployed submission connector flow |
+| `standard_api_name` | Name of the deployed Bitcoin standard API |
+| `stream_factories` | Map of deployed stream factory IDs (`transaction_events`) |
+| `config_profiles` | Map of config-type name to deployed config profile ID |

@@ -1,21 +1,23 @@
 # chaininfra-evm-gateway
 
 Deploys a single EVM Gateway (`EVMGateway` runtime + service) that fronts a Besu
-network with JSON-RPC, WebSocket, and GraphQL endpoints. This module is typically
-composed alongside Besu nodes in the same chain-infrastructure stack:
+network with JSON-RPC, WebSocket, and GraphQL endpoints.
 
-- [`chaininfra-besu-network`](../chaininfra-besu-network) — outputs the `stack_id`
-  and `network_id` this module requires
-- [`chaininfra-besu-node`](../chaininfra-besu-node) — deploys validator/RPC Besu
-  nodes into that stack and network (the gateway routes to the underlying chain)
+## Required settings
 
-Downstream modules such as [`chaininfra-block-indexer`](../chaininfra-block-indexer)
-consume this module's `service_id` output as `evm_gateway_service_id`.
+| Setting | Description |
+|---------|-------------|
+| `environment_id` | Kaleido environment to deploy the gateway into |
+| `gateway_name` | Display name of the runtime and service |
+| `network_id` | [`network_id`](../chaininfra-besu-network#outputs) from [`chaininfra-besu-network`](../chaininfra-besu-network) — `BesuNetwork` the gateway fronts |
 
-Service config binds the gateway to the target network via `network.id`.
-`stack_id` is optional — omit it to create the gateway outside a stack. Runtime
-placement defaults to `Small`. When `hostname` is set, the module binds a custom hostname to the `jsonrpc`,
-`jsonrpcws`, and `graphql` endpoints.
+## Optional settings
+
+| Setting | Default | Usage |
+|---------|---------|-------|
+| `stack_id` | `null` | [`stack_id`](../chaininfra-besu-network#outputs) from [`chaininfra-besu-network`](../chaininfra-besu-network) — chain-infrastructure stack; `null` creates the gateway outside a stack |
+| `runtime_size` | `Small` | EVM Gateway runtime size |
+| `hostname` | `null` | Custom hostname; when set, binds `jsonrpc`, `jsonrpcws`, and `graphql` endpoints |
 
 ## Usage
 
@@ -41,5 +43,10 @@ module "gateway" {
 
 ## Outputs
 
-- `service_id`, `runtime_id`, `evm_gateway_name`
-- `endpoints`, `hostnames`
+| Output | Description |
+|--------|-------------|
+| `service_id` | ID of the `EVMGateway` service |
+| `runtime_id` | ID of the `EVMGateway` runtime |
+| `evm_gateway_name` | Display name of the runtime and service |
+| `endpoints` | Map of published service endpoints |
+| `hostnames` | Map of custom hostnames bound to the service |

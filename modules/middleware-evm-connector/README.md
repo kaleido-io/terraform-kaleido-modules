@@ -1,9 +1,40 @@
-# evm-connector
+# middleware-evm-connector
 
-Deploys an EVM connector service (`EVMConnectorStack` + runtime + service) and the
-full set of config types, config profiles, connector flows, stream factories, and
-the standard API/stream it ships with. The resource graph is hardcoded; per-ecosystem
-behaviour is controlled by overriding the typed config-profile variables.
+Deploys an EVM connector service (`EVMConnectorStack` + runtime + service) with
+config types, config profiles, connector flows, stream factories, and the standard
+API it ships with. Per-ecosystem behaviour is controlled by the typed config-profile
+variables.
+
+## Required settings
+
+| Setting | Description |
+|---------|-------------|
+| `environment_id` | Kaleido environment to deploy the connector into |
+| `key_manager_service_id` | ID of the `KeyManager` service used to sign EVM transactions |
+
+## Optional settings
+
+| Setting | Default | Usage |
+|---------|---------|-------|
+| `stack_name` | `evm` | Name of the `EVMConnectorStack` |
+| `connector_name` | `evm-connector` | Display name of the runtime and service |
+| `runtime_size` | `Small` | `EVMConnector` runtime size |
+| `runtime_zone` | `null` | Deployment zone; `null` uses the platform default |
+| `database_name` | `null` | External database name; required only on instances with externally-provisioned databases |
+| `evm_gateway_service_id` | `null` | [`service_id`](../chaininfra-evm-gateway#outputs) from [`chaininfra-evm-gateway`](../chaininfra-evm-gateway) for Kaleido-managed Besu networks |
+| `jsonrpc_url` | `null` | External JSON-RPC URL for public networks |
+| `jsonrpc_auth` | `null` | Basic-auth credentials for the JSON-RPC endpoint (sensitive) |
+| `ecosystem` | `null` | Ecosystem metadata (e.g. `{ name = "ethereum", displayName = "Ethereum" }`) |
+| `network` | `null` | Network metadata (e.g. `{ name = "ethereum-mainnet", chainId = "1" }`) |
+| `confirmations` | `{}` | `evm.confirmations` — confirmation count and resubmission policy |
+| `gas_estimation` | `{}` | `evm.gasEstimation` — gas estimate scale factor |
+| `gas_pricing` | `{}` | `evm.gasPricing` — fee format, source, auto-increment, and caps |
+| `nonce_assignment` | `{}` | `evm.nonceAssignment` |
+| `submission` | `{}` | `evm.submission` — error-type matchers for submission retries |
+| `transaction_serialization` | `{}` | `evm.transactionSerialization` |
+| `block_events` | `{}` | `evm.blockEventsConfig` — latest-block poller debounce timings |
+| `transaction_events` | `{}` | `evm.transactionEventsConfig` — block-walking event stream tuning |
+| `contract_event_listener` | `{}` | `evm.contractEventListener` — contract address + event ABI listener |
 
 ## Usage
 
@@ -21,12 +52,6 @@ module "evm" {
 }
 ```
 
-Or with one of the sample `*.tfvars` files:
-
-```
-terraform apply -var-file=modules/evm-connector/examples/ethereum-mainnet.tfvars
-```
-
 ## Ecosystem presets
 
 Drop-in `*.tfvars` files under `examples/`:
@@ -42,13 +67,15 @@ Drop-in `*.tfvars` files under `examples/`:
 | `polygon-amoy.tfvars` | 50 confirmations (reorg risk) |
 | `arbitrum-sepolia.tfvars` | 6 confirmations |
 
-Adding a new ecosystem is a `*.tfvars` change — see the
-[`tf-sync-connector-module` skill](../../.claude/tf-sync-connector-module/SKILL.md)
-for the methodology.
-
 ## Outputs
 
-- `service_id`, `stack_id`, `runtime_id`
-- `submission_flow_name`, `query_flow_name`, `standard_api_name`
-- `stream_factories` (map: `block_events`, `transaction_events`)
-- `config_profiles` (map: config type → profile ID)
+| Output | Description |
+|--------|-------------|
+| `service_id` | ID of the `EVMConnector` service |
+| `stack_id` | ID of the `EVMConnectorStack` |
+| `runtime_id` | ID of the `EVMConnector` runtime |
+| `submission_flow_name` | Name of the deployed submission connector flow |
+| `query_flow_name` | Name of the deployed query connector flow |
+| `standard_api_name` | Name of the deployed EVM standard API |
+| `stream_factories` | Map of deployed stream factory IDs (`block_events`, `transaction_events`) |
+| `config_profiles` | Map of config-type name to deployed config profile ID |

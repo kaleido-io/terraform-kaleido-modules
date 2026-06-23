@@ -1,49 +1,38 @@
 # chaininfra-baf
 
-Deploys a Blockchain Application Firewall (BAF) stack which is a subtype of the `chain_infrastructure`
+Deploys a Blockchain Application Firewall (BAF) stack — a `chain_infrastructure`
 stack (`BAFStack`) with an EVM Gateway configured for fine-grained access control.
-Applications route chain traffic through this gateway; while evaluating attached [Rego](https://www.openpolicyagent.org/docs/latest/policy-language/)
-policy to the application to decide which JSON-RPC calls that application may be allowed.
+Applications route chain traffic through this gateway; attached Rego policies decide
+which JSON-RPC calls each application may make.
 
-Pair with [`chaininfra-besu-network`](../chaininfra-besu-network), which outputs the
-`network_id` this module requires. Besu nodes in the same environment provide the
-underlying chain the BAF gateway fronts.
+The gateway enables `decodeRawTransactions` and `fineGrainedPermissions` for policy
+enforcement. When `hostname` is set, the gateway publishes `jsonrpc`, `jsonrpcws`,
+and `graphql` endpoints.
 
-Unlike [`chaininfra-evm-gateway`](../chaininfra-evm-gateway), this module creates its
-own stack and enables gateway features required for policy enforcement:
+## Required settings
 
-| Setting | Value |
-|---------|-------|
-| `decodeRawTransactions` | `true` — decode `eth_sendRawTransaction` payloads before policy evaluation |
-| `fineGrainedPermissions` | `true` — evaluate per-request Rego policies on gateway traffic |
+| Setting | Description |
+|---------|-------------|
+| `environment_id` | Kaleido environment to deploy the BAF stack into |
+| `stack_name` | Display name of the `BAFStack` and gateway |
+| `network_id` | [`network_id`](../chaininfra-besu-network#outputs) from [`chaininfra-besu-network`](../chaininfra-besu-network) — `BesuNetwork` the gateway fronts |
+| `policies` | List of Rego policies to attach (see [Policies](#policies)) |
 
-When `hostname` is set, the gateway publishes `jsonrpc`, `jsonrpcws`, and `graphql`
-endpoints.
+## Optional settings
+
+| Setting | Default | Usage |
+|---------|---------|-------|
+| `runtime_size` | `Small` | EVM Gateway runtime size |
+| `hostname` | `null` | Custom hostname for the BAF gateway |
 
 ## Policies
 
-Policies are [Rego](https://www.openpolicyagent.org/docs/latest/policy-language/) documents
-attached to the BAF gateway via `kaleido_platform_service_access_policy`. Each entry in
-the `policies` input scopes a policy to a single **application** — the Kaleido
-application identity whose API keys authenticate against this gateway.
-
-Provide policy text with **one** of:
-
-- `file` — path to a `.rego` file (for example `file("${path.module}/resources/my-policy.rego")`)
-- `rego` — inline Rego source
-
-Every entry requires `application_id` (for example `ap:jrq4hmi72j` from an existing
-`kaleido_platform_application`). Create the application separately, then reference its
-ID here so only that caller is subject to the policy.
-
-Gateway policies use the `gateway_permission` package. The platform evaluates `allow`
-against each JSON-RPC request; denied calls are rejected before they reach the chain.
-With `decodeRawTransactions` enabled, policies can inspect decoded transaction fields
-(such as `input.params[0].from` on `eth_sendRawTransaction`).
+Each entry in `policies` creates a `kaleido_platform_service_access_policy` scoped
+to one Kaleido application. Provide policy text with **one** of `file` (path to a
+`.rego` file) or `rego` (inline source). Every entry requires `application_id`.
 
 See [`examples/chaininfra-besu/resources/sample-baf-policy`](../../examples/chaininfra-besu/resources/sample-baf-policy)
-for a starter policy that allows only `eth_call` and `eth_sendRawTransaction`, and
-restricts submitters to an allow-listed `from` address:
+for a starter policy.
 
 ```rego
 package gateway_permission
@@ -64,10 +53,6 @@ allow if {
   signer_address_allowed
 }
 ```
-
-Attach multiple policies to grant different rules to different applications. Each
-`policies` entry creates one `kaleido_platform_service_access_policy` on the BAF
-gateway's `service_id`.
 
 ## Usage
 
@@ -93,15 +78,16 @@ module "baf" {
       file           = "${path.module}/resources/sample-baf-policy"
       application_id = kaleido_platform_application.my_app.id
     },
-    {
-      rego           = file("${path.module}/resources/other-policy.rego")
-      application_id = "ap:existing-app-id"
-    },
   ]
 }
 ```
 
 ## Outputs
 
-- `service_id`, `runtime_id`, `stack_id`
-- `endpoints`, `hostnames`
+| Output | Description |
+|--------|-------------|
+| `service_id` | ID of the BAF `EVMGateway` service |
+| `runtime_id` | ID of the BAF `EVMGateway` runtime |
+| `stack_id` | ID of the `BAFStack` |
+| `endpoints` | Map of published service endpoints |
+| `hostnames` | Map of custom hostnames bound to the service |

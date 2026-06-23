@@ -1,21 +1,25 @@
 # chaininfra-block-indexer
 
 Deploys a single Block Indexer (`BlockIndexer` runtime + service) into an existing
-chain-infrastructure stack. This module can be typically composed alongside Besu nodes
-and an EVM gateway in the same stack:
+chain-infrastructure stack. The indexer connects to an EVM gateway and optionally a
+ContractManager for contract metadata.
 
-- [`chaininfra-besu-network`](../chaininfra-besu-network) — outputs the `stack_id`
-  this module requires (and `network_id` for sibling modules such as Besu nodes and
-  the EVM gateway)
-- [`chaininfra-besu-node`](../chaininfra-besu-node) — deploys validator/RPC Besu
-  nodes into that stack and network.
-- [`chaininfra-evm-gateway`](../chaininfra-evm-gateway) — outputs the `service_id`
-  passed to the optional `evm_gateway_service_id` input
+## Required Settings
 
-Wire a ContractManager via `contract_manager_service_id` so the indexer can resolve contract metadata.
+| Setting | Description |
+|---------|-------------|
+| `environment_id` | Kaleido environment to deploy the indexer into |
+| `stack_id` | [`stack_id`](../chaininfra-besu-network#outputs) from [`chaininfra-besu-network`](../chaininfra-besu-network) — chain-infrastructure stack the indexer belongs to |
+| `evm_gateway_service_id` | [`service_id`](../chaininfra-evm-gateway#outputs) from [`chaininfra-evm-gateway`](../chaininfra-evm-gateway) — `EVMGateway` service the indexer reads from |
 
-Service config connects the BlockIndexer to its upstream services; hostname defaults
-to `block-indexer` and publishes `ui` and `rest` endpoints.
+## Optional settings
+
+| Setting | Default | Usage |
+|---------|---------|-------|
+| `block_indexer_name` | `block-indexer` | Display name of the runtime and service |
+| `contract_manager_service_id` | `""` | ID of the `ContractManager` service for contract metadata resolution |
+| `hostname` | `block-indexer` | Custom hostname; publishes `ui` and `rest` endpoints |
+| `blockindexer_size` | `null` | Runtime size (`ExtraSmall`–`ExtraLarge`); `null` uses the platform default |
 
 ## Usage
 
@@ -33,5 +37,10 @@ module "block_indexer" {
 
 ## Outputs
 
-- `service_id`, `runtime_id`, `block_indexer_name`
-- `endpoints`, `hostnames`
+| Output | Description |
+|--------|-------------|
+| `service_id` | ID of the `BlockIndexer` service |
+| `runtime_id` | ID of the `BlockIndexer` runtime |
+| `block_indexer_name` | Display name of the runtime and service |
+| `endpoints` | Map of published service endpoints |
+| `hostnames` | Map of custom hostnames bound to the service |
