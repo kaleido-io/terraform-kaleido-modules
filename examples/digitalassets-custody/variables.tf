@@ -24,10 +24,18 @@ variable "kaleido_platform_api" {
 
 variable "kaleido_platform_username" {
   type = string
+  default = ""
 }
 
 variable "kaleido_platform_password" {
   type = string
+  default = ""
+  sensitive = true
+}
+
+variable "kaleido_platform_bearer_token" {
+  type = string
+  default = ""
   sensitive = true
 }
 
@@ -90,6 +98,24 @@ variable "evm_confirmations" {
     }
   }
   description = "evm.confirmations profile passed to the EVM connector. Defaults match the Ethereum Sepolia 6-confirmation override."
+}
+
+# ─── HTTP connector endpoint ──────────────────────────────────────────────────
+
+variable "http_url" {
+  type        = string
+  default     = null
+  description = "Backend base URL for the HTTP connector. When set, the HTTP connector is deployed."
+}
+
+variable "http_backend_auth" {
+  type = object({
+    username = string
+    password = string
+  })
+  default     = null
+  sensitive   = true
+  description = "Optional HTTP basic-auth credentials for the HTTP connector backend."
 }
 
 # ─── BTC (Bitcoin Testnet3) connector endpoint ────────────────────────────────
