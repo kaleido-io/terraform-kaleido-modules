@@ -5,7 +5,6 @@ locals {
     {
       network           = { id = var.network_id }
       routable          = var.routable
-      mode              = var.mode
       signer            = var.signer
       syncMode          = var.sync_mode
       logLevel          = var.log_level

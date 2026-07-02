@@ -22,7 +22,6 @@ chain-infrastructure stack and Besu network.
 | `storage_type` | `null` | Persistent-volume storage class; `null` uses the platform default |
 | `storage_size` | `null` | Persistent-volume size in GB; `null` uses the platform default |
 | `signer` | `false` | Whether the node is a network signer/validator |
-| `mode` | `active` | `active` receives RPC requests; `standby` does not |
 | `routable` | `true` | Whether the node is eligible as a gateway backend |
 | `sync_mode` | `FULL` | Blockchain sync mode (`FULL` archive or `SNAP`) |
 | `log_level` | `INFO` | Besu runtime log level |

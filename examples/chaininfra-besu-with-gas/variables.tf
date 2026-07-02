@@ -33,30 +33,29 @@ variable "stack_name" {
 
 variable "chain_id" {
   type = number
+  default = 12345
   description = "Network chain ID."
 }
 
-variable "genesis_json" {
+# --- Gas configuration ───────────────────────────────────────────────
+
+variable "fund_holder_balance" {
   type = string
-  default = null
-  description = "Genesis JSON for the network."
+  default = "0x111111111111"
+  description = "Balance of the fund holder in wei."
 }
 
 # ─── Validator Configuration ───────────────────────────────────────────────
 
 variable "validator_count" {
   type = number
+  default = 1
   description = "Number of validator nodes to deploy."
-}
-
-variable "validator_node_keys" {
-  type = list(string)
-  description = "List of validator node keys."
-  default = []
 }
 
 variable "rpc_node_count" {
   type = number
+  default = 1
   description = "Number of RPC nodes to deploy."
 }
 
