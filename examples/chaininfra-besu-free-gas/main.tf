@@ -79,7 +79,6 @@ module "block_indexer" {
   source = "../../modules/chaininfra-block-indexer"
 
   environment_id = kaleido_platform_environment.env.id
-  network_id     = module.besu_network.network_id
   stack_id       = module.besu_network.stack_id
   evm_gateway_service_id = module.gateway.service_id
   contract_manager_service_id = kaleido_platform_service.contract_manager_service.id
