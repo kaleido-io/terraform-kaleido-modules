@@ -64,7 +64,7 @@ module "besu_network" {
   chain_id = var.chain_id
 
   initial_balances = {
-    "${kaleido_platform_kms_key.key_manager_key.address}" = var.fund_holder_balance
+    (kaleido_platform_kms_key.key_manager_key.address) = var.fund_holder_balance
   }
 
   block_config_flags = {
@@ -121,7 +121,6 @@ module "block_indexer" {
   source = "../../modules/chaininfra-block-indexer"
 
   environment_id = kaleido_platform_environment.env.id
-  network_id     = module.besu_network.network_id
   stack_id       = module.besu_network.stack_id
   evm_gateway_service_id = module.gateway.service_id
   contract_manager_service_id = kaleido_platform_service.contract_manager_service.id

@@ -5,6 +5,7 @@ resource "kaleido_platform_runtime" "this"{
   name = var.block_indexer_name
   stack_id = var.stack_id
   environment = var.environment_id
+  size = var.blockindexer_size
   config_json = jsonencode({})
 }
 
