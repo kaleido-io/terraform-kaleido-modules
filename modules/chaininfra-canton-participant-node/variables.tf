@@ -1,7 +1,7 @@
 variable "node_name" {
   type = string
-  default = "local-synchronizer-node"
-  description = "Display name of the CantonSynchronizerNode (kaleido_platform_runtime, type `CantonSynchronizerNode`)."
+  default = null
+  description = "Display name of the CantonParticipantNode (kaleido_platform_runtime, type `CantonParticipantNode`). If not provided, the node will be named `participant-<default_party>`."
 }
 
 variable "environment_id" {
@@ -28,8 +28,12 @@ variable "stack_id" {
 
 variable "runtime_size" {
   type = string
-  default = null
-  description = "CantonSynchronizerNodeRuntime size (ExtraSmall | Small | Medium | Large | ExtraLarge). Null uses the platform default."
+  default = "Medium"
+  description = "CantonSynchronizerNodeRuntime size (Medium | Large | ExtraLarge)."
+  validation {
+    condition     = contains(["Medium", "Large", "ExtraLarge"], var.runtime_size)
+    error_message = "runtime_size must be one of: Medium, Large, ExtraLarge."
+  }
 }
 
 variable "zone" {
@@ -70,6 +74,7 @@ variable "kms_wallet_name" {
 
 variable "kms_wallet_folder" {
   type = string
+  default = null
   description = "Folder under the KMS wallet the node uses for encryption."
 }
 
@@ -85,8 +90,8 @@ variable "kms_key_spec" {
 
 variable "hostname_prefix" {
   type = string
-  default = "participant"
-  description = "Prefix for the hostname of the CantonParticipantNode."
+  default = null
+  description = "Prefix for the hostname of the CantonParticipantNode. If not provided, the hostname will be the node name."
 }
 
 variable "default_party" {

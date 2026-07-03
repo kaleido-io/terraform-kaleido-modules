@@ -39,6 +39,12 @@ module "btc" {
 }
 ```
 
+Or with a sample `*.tfvars` file:
+
+```
+terraform apply -var-file=modules/btc-connector/examples/bitcoin-mainnet.tfvars
+```
+
 ## Ecosystem presets
 
 | File | Notes |
@@ -47,6 +53,9 @@ module "btc" {
 | `bitcoin-testnet3.tfvars` | 2 confirmations, RPC fee estimation |
 | `bitcoin-testnet4.tfvars` | 2 confirmations, RPC fee estimation |
 | `bitcoin-signet.tfvars` | 1 confirmation, fixed 1 sat/vB fee |
+
+Adding a new network is a `*.tfvars` change — see the
+[`tf-sync-connector-module` skill](../../.claude/tf-sync-connector-module/SKILL.md).
 
 ## Outputs
 

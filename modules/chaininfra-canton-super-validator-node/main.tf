@@ -1,7 +1,9 @@
 # --- Canton Super Validator Node ─────────────────────────────────────────────────────────────────
 
 locals {
-  folder = var.kms_wallet_folder != null ? var.kms_wallet_folder : var.node_name
+  node_name = var.node_name != null ? var.node_name : "sv-${var.default_party}"
+  folder = var.kms_wallet_folder != null ? var.kms_wallet_folder : local.node_name
+  hostname_prefix = var.hostname_prefix != null ? var.hostname_prefix : local.node_name
 
   config = merge(
     {
@@ -20,7 +22,7 @@ locals {
 
 resource "kaleido_platform_runtime" "this" {
   type        = "CantonSuperValidatorNode"
-  name        = var.node_name
+  name        = local.node_name
   environment = var.environment_id
   stack_id = var.stack_id
   size = var.runtime_size
@@ -33,7 +35,7 @@ resource "kaleido_platform_runtime" "this" {
 
 resource "kaleido_platform_service" "this" {
   type = "CantonSuperValidatorNode"
-  name = var.node_name
+  name = local.node_name
   stack_id = var.stack_id
   environment = var.environment_id
   runtime = kaleido_platform_runtime.this.id
@@ -50,21 +52,28 @@ resource "kaleido_platform_service" "this" {
 # ─── hostnames ───────────────────────────────────────────────────────────────────────────────
 
 resource "kaleido_platform_hostname" "ledger" {
-  name = "${var.hostname_prefix}-ledger"
+  name = "${local.hostname_prefix}-ledger"
   environment = var.environment_id
   service = kaleido_platform_service.this.id
-  hostname = "${var.hostname_prefix}-ledger"
+  hostname = "${local.hostname_prefix}-ledger"
   endpoints = ["ledger"]
   mtls = false
-  count = var.hostname_prefix != null ? 1 : 0
 }
 
 resource "kaleido_platform_hostname" "admin" {
-  name = "${var.hostname_prefix}-admin"
+  name = "${local.hostname_prefix}-admin"
   environment = var.environment_id
   service = kaleido_platform_service.this.id
-  hostname = "${var.hostname_prefix}-admin"
+  hostname = "${local.hostname_prefix}-admin"
   endpoints = ["admin"]
   mtls = false
-  count = var.hostname_prefix != null ? 1 : 0
+}
+
+resource "kaleido_platform_hostname" "http" {
+  name = "${local.hostname_prefix}-http"
+  environment = var.environment_id
+  service = kaleido_platform_service.this.id
+  hostname = "${local.hostname_prefix}"
+  endpoints = ["http-ledger", "node", "validator", "scan"]
+  mtls = false
 }
