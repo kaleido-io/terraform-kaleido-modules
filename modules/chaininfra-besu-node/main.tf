@@ -30,6 +30,7 @@ resource "kaleido_platform_runtime" "this" {
 
   size         = var.runtime_size
   zone         = var.zone
+  sub_zone     = var.subzone
   storage_size = var.storage_size
   storage_type = var.storage_type
 }

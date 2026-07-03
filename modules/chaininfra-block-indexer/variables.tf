@@ -8,11 +8,6 @@ variable "stack_id" {
   description = "ID of the chain-infrastructure (BesuStack) the node belongs to — e.g. the `stack_id` output of the chaininfra-besu-network module."
 }
 
-variable "network_id" {
-  type        = string
-  description = "ID of the BesuNetwork the node joins (besu-node-service-config.network.id) — e.g. the `network_id` output of the chaininfra-besu-network module."
-}
-
 variable "block_indexer_name" {
   type        = string
   default     = "block-indexer"
