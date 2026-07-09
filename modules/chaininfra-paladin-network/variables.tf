@@ -1,6 +1,6 @@
 variable "environment_id" {
   type        = string
-  description = "ID of the environment to create the Paladin network in."
+  description = "ID of the Kaleido environment to create the Paladin network in."
 }
 
 variable "network_name" {
@@ -17,7 +17,7 @@ variable "stack_name" {
 variable "registry_mode" {
   type        = string
   default     = "deploy"
-  description = "paladin-network-config.evmRegistry.registryContract — `deploy` has the platform deploy a new EVM registry contract via the admin node; `existing` joins a registry already deployed on the base ledger."
+  description = "`deploy` has the platform deploy a new EVM registry contract via the admin node; `existing` joins a registry already deployed on the base ledger."
   validation {
     condition     = contains(["deploy", "existing"], var.registry_mode)
     error_message = "registry_mode must be one of: deploy, existing."
@@ -27,7 +27,7 @@ variable "registry_mode" {
 variable "existing_registry_address" {
   type        = string
   default     = null
-  description = "paladin-network-config.evmRegistry.existingContract.address — address of the already-deployed EVM registry contract. Required when registry_mode = existing."
+  description = "address of the already-deployed EVM registry contract. Required when registry_mode = existing."
   validation {
     condition     = var.registry_mode != "existing" || var.existing_registry_address != null
     error_message = "existing_registry_address is required when registry_mode = existing."
@@ -40,7 +40,7 @@ variable "registry_admin" {
     node_name = string
   })
   default     = null
-  description = "paladin-network-config.evmRegistry.admin — the identity and PaladinNodeService name that deploys and administers the EVM registry. Required when registry_mode = deploy; node_name must match the `node_name` of a chaininfra-paladin-node created against this network."
+  description = "The identity and PaladinNodeService name that deploys and administers the EVM registry. Required when registry_mode = deploy; node_name must match the `node_name` of a chaininfra-paladin-node created against this network."
   validation {
     condition     = var.registry_mode != "deploy" || var.registry_admin != null
     error_message = "registry_admin is required when registry_mode = deploy."

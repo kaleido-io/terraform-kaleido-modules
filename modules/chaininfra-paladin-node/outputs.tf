@@ -25,5 +25,5 @@ output "hostnames" {
 
 output "registry_address" {
   value       = var.read_registry_address ? data.kaleido_platform_paladin_evm_registry.this[0].address : null
-  description = "Address of the network's EVM registry contract, read back after deployment. Only set on the registry-admin node with read_registry_address = true (deploy-mode bootstrap: the address doesn't exist until the admin node has run). Joiner networks consume this as chaininfra-paladin-network existing_registry_address."
+  description = "Address of the network's EVM registry contract."
 }

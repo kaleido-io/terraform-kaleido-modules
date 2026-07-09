@@ -29,8 +29,6 @@ locals {
     var.wallets.zeto_wallet_seed != null ? { zetoWalletSeed = { credSetRef = "zetoWalletSeed" } } : {},
   )
 
-  # db, log, blockchain, rpcServer, transports, registries, keyManager, and
-  # debugServer are platform-managed — the operator overwrites them if set here.
   base_config = merge(
     length(var.domains) > 0 ? { domains = var.domains } : {},
     var.base_config,
@@ -88,6 +86,20 @@ resource "kaleido_platform_service" "this" {
       }
     } : {},
   )
+
+  lifecycle {
+    # The registry deploy transaction is signed by the admin node's
+    # registryAdminIdentity — if it differs from the identity named in the
+    # network's registry_admin, the registry is administered by the wrong key.
+    precondition {
+      condition = (
+        var.network_registry == null ||
+        try(var.network_registry.admin.node_name, null) != var.node_name ||
+        var.registry_admin_identity == var.network_registry.admin.identity
+      )
+      error_message = "This node is the network's registry admin (node_name matches network_registry.admin.node_name), but registry_admin_identity does not match network_registry.admin.identity. The registry deploy transaction would be signed by a different identity than the network expects to administer the registry."
+    }
+  }
 }
 
 resource "kaleido_platform_hostname" "this" {
@@ -100,12 +112,20 @@ resource "kaleido_platform_hostname" "this" {
   mtls        = false
 }
 
-# Deploy-mode registry read-back: the address only exists after the admin node
-# has deployed the registry, so the data source lives here rather than in the
-# network module.
 data "kaleido_platform_paladin_evm_registry" "this" {
   count       = var.read_registry_address ? 1 : 0
   environment = var.environment_id
   network     = var.network_id
   depends_on  = [kaleido_platform_service.this]
+
+  lifecycle {
+    precondition {
+      condition     = var.network_registry == null || var.network_registry.mode == "deploy"
+      error_message = "read_registry_address = true but network_registry.mode is not 'deploy'. There is no registry deploy transaction to wait for, so the read would poll forever. In existing mode the registry address is already known — consume it from the network configuration instead."
+    }
+    precondition {
+      condition     = var.network_registry == null || try(var.network_registry.admin.node_name, null) == var.node_name
+      error_message = "read_registry_address = true on a node whose node_name does not match network_registry.admin.node_name. The registry deploy transaction is only submitted via the admin node — set read_registry_address = true on that node."
+    }
+  }
 }

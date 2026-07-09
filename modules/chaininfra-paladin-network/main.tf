@@ -1,5 +1,3 @@
-# ─── PaladinNetwork + chain-infrastructure stack ────────────────────────────────
-
 locals {
   stack_name = var.stack_name != null ? var.stack_name : var.network_name
 

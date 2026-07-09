@@ -13,7 +13,7 @@ variable "kaleido_platform_password" {
 
 variable "environment_id" {
   type        = string
-  description = "ID of a pre-existing environment to create the network in. Leave empty to create a new environment named `environment_name`."
+  description = "ID of a pre-existing environment. Leave empty to create a new environment named `environment_name`."
   default     = ""
 }
 
@@ -33,13 +33,17 @@ variable "network_name" {
 
 variable "node_count" {
   type        = number
-  description = "Number of Paladin nodes to create. Node 1 is the registry admin."
+  description = "Number of Paladin nodes to create. Node 1 is the registry admin; the rest are joiners."
   default     = 2
+  validation {
+    condition     = var.node_count >= 1
+    error_message = "node_count must be at least 1 (node 1 is the registry admin)."
+  }
 }
 
 variable "node_name_prefix" {
   type        = string
-  description = "Prefix for Paladin node names (`<prefix>-1` ... `<prefix>-N`). Node 1 is the registry admin."
+  description = "Prefix for Paladin node names (`<prefix>-1` ... `<prefix>-N`)."
   default     = "paladin-node"
 }
 
@@ -49,9 +53,21 @@ variable "registry_admin_identity" {
   default     = "registry.admin"
 }
 
+variable "paladin_ref" {
+  type        = string
+  description = "Git ref (branch name or commit SHA) of the Paladin repo to source the domain contracts from."
+  default     = "5baa0c8e5f8b7b55e5055de9cef2a83b1b361dae"
+}
+
+variable "paladin_repo" {
+  type        = string
+  description = "GitHub repository URL to source the domain contracts from."
+  default     = "https://github.com/LFDT-Paladin/paladin"
+}
+
 variable "domains" {
   type        = any
-  description = "Optional Paladin domain plugin config keyed by domain name (noto/pente/zeto), passed through to every node's baseConfig.domains."
+  description = "Additional Paladin domain config keyed by domain name, merged over the noto/pente domains this example deploys."
   default     = {}
 }
 
@@ -62,6 +78,22 @@ variable "publish_hostnames" {
 }
 
 # ─── Base ledger + keys ─────────────────────────────────────────────────────────
+
+variable "signing_key_address" {
+  type        = string
+  description = "Deploy signer for the domain factories as a 0x… address. Overrides the domain-deployer key this example creates."
+  default     = null
+  validation {
+    condition     = var.signing_key_address == null || var.signing_key_uri == null
+    error_message = "Set at most one of signing_key_address or signing_key_uri."
+  }
+}
+
+variable "signing_key_uri" {
+  type        = string
+  description = "Deploy signer for the domain factories as a Key Manager key URI. Overrides the domain-deployer key this example creates."
+  default     = null
+}
 
 variable "besu_network_name" {
   type        = string

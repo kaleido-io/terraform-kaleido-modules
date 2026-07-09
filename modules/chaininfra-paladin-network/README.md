@@ -1,31 +1,26 @@
 # chaininfra-paladin-network
 
-Deploys a Paladin network (`kaleido_platform_network`, type `PaladinNetwork`) and the
-`chain_infrastructure` stack (sub-type `PaladinStack`) that wraps it. The network's
-registry of nodes is an EVM smart contract on the base ledger, in one of two modes:
+Deploys a Paladin network (`PaladinNetwork`) and the `chain_infrastructure` stack
+(`PaladinStack`) on the Kaleido platform. The network's node registry is an EVM contract on
+the base ledger, deployed or joined per `registry_mode`.
 
-- **`deploy`** (default) — the platform deploys a new registry contract. Requires
-  `registry_admin`: the identity and node that perform the deployment. The named node
-  must be created against this network with a matching `node_name`
-  (see [chaininfra-paladin-node](../chaininfra-paladin-node)).
-- **`existing`** — join a registry contract already deployed on the base ledger.
-  Requires `existing_registry_address`.
+## Modes
 
-## Required settings
+| `registry_mode` | Behavior |
+|---|---|
+| `deploy` (default) | platform deploys a new registry contract via the admin node — **operator**; requires `registry_admin` |
+| `existing` | join a registry contract already on the base ledger — **joiner**; requires `existing_registry_address` |
 
-| Setting | Description |
-|---------|-------------|
-| `environment_id` | Kaleido environment to deploy the network and stack into |
-| `network_name` | Display name of the `PaladinNetwork` |
-
-## Optional settings
+## Settings
 
 | Setting | Default | Usage |
 |---------|---------|-------|
-| `stack_name` | `network_name` | Display name of the chain-infrastructure stack |
-| `registry_mode` | `deploy` | `deploy` deploys a new EVM registry contract; `existing` joins one already on the ledger |
-| `registry_admin` | `null` | `{ identity, node_name }` that deploys/administers the registry — **required in `deploy` mode**; `node_name` must equal the admin node's `node_name` |
-| `existing_registry_address` | `null` | Address of the already-deployed registry contract — **required in `existing` mode** |
+| `environment_id` | required | Kaleido environment to create resources in |
+| `network_name` | required | name of the `PaladinNetwork` |
+| `stack_name` | `network_name` | name of the chain-infrastructure stack |
+| `registry_mode` | `deploy` | `deploy` deploys a new EVM registry contract; `existing` joins one |
+| `registry_admin` | `null` | `{ identity, node_name }` that deploys/administers the registry — **required in `deploy` mode**; `node_name` must match the admin node's `node_name` |
+| `existing_registry_address` | `null` | registry contract address — **required in `existing` mode** |
 
 ## Usage
 
@@ -36,7 +31,7 @@ module "paladin_network" {
   environment_id = kaleido_platform_environment.env.id
   network_name   = "asset-net"
 
-  registry_mode  = "deploy"
+  registry_mode = "deploy"
   registry_admin = {
     identity  = "registry.admin"
     node_name = "node-1" # must match a chaininfra-paladin-node node_name on this network
@@ -44,15 +39,15 @@ module "paladin_network" {
 }
 ```
 
-The deployed registry's address is not an output of this module: in `deploy` mode it
-only exists after the admin node has run, so it is read back via the node module's
-`read_registry_address` flag / `registry_address` output. In `existing` mode the caller
-already has it.
+In `deploy` mode the registry address only exists after the admin node has run, so it
+is read back via [chaininfra-paladin-node](../chaininfra-paladin-node)'s
+`read_registry_address` flag / `registry_address` output — not from this module.
 
 ## Outputs
 
 | Output | Description |
 |--------|-------------|
-| `network_id` | ID of the `PaladinNetwork` — feeds `chaininfra-paladin-node` `network_id` |
-| `stack_id` | ID of the chain-infrastructure stack — feeds `chaininfra-paladin-node` `stack_id` |
-| `network_name` | Display name of the `PaladinNetwork` |
+| `network_id` | Paladin network ID — feeds `chaininfra-paladin-node` `network_id` |
+| `stack_id` | Chain-infrastructure stack ID — feeds `chaininfra-paladin-node` `stack_id` |
+| `network_name` | Name of the `PaladinNetwork` |
+| `registry` | `{ mode, admin }` — feed to each node's `network_registry` for plan-time validation |

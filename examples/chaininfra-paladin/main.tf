@@ -1,4 +1,3 @@
-# Create an environment only when an existing environment_id was not provided.
 resource "kaleido_platform_environment" "env_0" {
   count = var.environment_id == "" ? 1 : 0
   name  = var.environment_name
@@ -9,7 +8,7 @@ locals {
   admin_node_name = "${var.node_name_prefix}-1"
 }
 
-# ─── Base ledger: Besu network + node + EVM gateway ─────────────────────────────
+# Base Ledger
 
 module "besu_network" {
   source = "../../modules/chaininfra-besu-network"
@@ -26,6 +25,7 @@ module "besu_node" {
   network_id     = module.besu_network.network_id
   stack_id       = module.besu_network.stack_id
   node_name      = "${var.besu_network_name}-node-1"
+  signer         = true
 }
 
 module "evm_gateway" {
@@ -37,7 +37,7 @@ module "evm_gateway" {
   gateway_name   = "${var.besu_network_name}-gateway"
 }
 
-# ─── Key manager + wallet for the Paladin nodes ─────────────────────────────────
+# Key Management
 
 resource "kaleido_platform_runtime" "kms_0" {
   type        = "KeyManager"
@@ -62,7 +62,94 @@ resource "kaleido_platform_kms_wallet" "wallet_0" {
   config_json = jsonencode({})
 }
 
-# ─── Paladin network + nodes ────────────────────────────────────────────────────
+# Deployer key for the domain factories — the signer becomes the factory owner,
+# so it should not be a node wallet key.
+resource "kaleido_platform_kms_key" "domain_deployer" {
+  name        = "domain-deployer"
+  environment = local.environment_id
+  service     = kaleido_platform_service.kms_0.id
+  wallet      = kaleido_platform_kms_wallet.wallet_0.name
+}
+
+# Contract + Transaction Management
+
+resource "kaleido_platform_runtime" "cms_0" {
+  type        = "ContractManager"
+  name        = "contracts1"
+  environment = local.environment_id
+  config_json = jsonencode({})
+}
+
+resource "kaleido_platform_service" "cms_0" {
+  type        = "ContractManager"
+  name        = "contracts1"
+  environment = local.environment_id
+  runtime     = kaleido_platform_runtime.cms_0.id
+  config_json = jsonencode({})
+}
+
+resource "kaleido_platform_runtime" "txm_0" {
+  type        = "TransactionManager"
+  name        = "txm1"
+  environment = local.environment_id
+  config_json = jsonencode({})
+}
+
+resource "kaleido_platform_service" "txm_0" {
+  type        = "TransactionManager"
+  name        = "txm1"
+  environment = local.environment_id
+  runtime     = kaleido_platform_runtime.txm_0.id
+  config_json = jsonencode({
+    keyManager = { id = kaleido_platform_service.kms_0.id }
+    type       = "evm"
+    evm = {
+      confirmations = { required = 0 }
+      connector = {
+        evmGateway = { id = module.evm_gateway.service_id }
+      }
+    }
+  })
+}
+
+# Paladin Domains
+
+module "noto" {
+  source = "../../modules/chaininfra-paladin-noto"
+
+  paladin_repo          = var.paladin_repo
+  paladin_ref           = var.paladin_ref
+  environment_id        = local.environment_id
+  contracts_service_id  = kaleido_platform_service.cms_0.id
+  txnmanager_service_id = kaleido_platform_service.txm_0.id
+
+  signing_key_address = var.signing_key_uri != null ? null : coalesce(var.signing_key_address, kaleido_platform_kms_key.domain_deployer.address)
+  signing_key_uri     = var.signing_key_uri
+
+  depends_on = [module.besu_node]
+}
+
+module "pente" {
+  source = "../../modules/chaininfra-paladin-pente"
+
+  paladin_repo          = var.paladin_repo
+  paladin_ref           = var.paladin_ref
+  environment_id        = local.environment_id
+  contracts_service_id  = kaleido_platform_service.cms_0.id
+  txnmanager_service_id = kaleido_platform_service.txm_0.id
+
+  signing_key_address = var.signing_key_uri != null ? null : coalesce(var.signing_key_address, kaleido_platform_kms_key.domain_deployer.address)
+  signing_key_uri     = var.signing_key_uri
+
+  # Deploy one domain at a time — both use the same signing key and TransactionManager.
+  depends_on = [module.noto]
+}
+
+locals {
+  domains = merge(module.noto.domain, module.pente.domain, var.domains)
+}
+
+# Paladin Network + Nodes
 
 module "paladin_network" {
   source = "../../modules/chaininfra-paladin-network"
@@ -77,16 +164,13 @@ module "paladin_network" {
   }
 }
 
-# Node 1 is the registry admin: it deploys the registry and reads back its
-# address. The remaining nodes are auto-discovered/registered by the operator.
-module "paladin_node" {
+module "paladin_admin_node" {
   source = "../../modules/chaininfra-paladin-node"
-  count  = var.node_count
 
   environment_id          = local.environment_id
   network_id              = module.paladin_network.network_id
   stack_id                = module.paladin_network.stack_id
-  node_name               = "${var.node_name_prefix}-${count.index + 1}"
+  node_name               = local.admin_node_name
   registry_admin_identity = var.registry_admin_identity
   key_manager_service_id  = kaleido_platform_service.kms_0.id
 
@@ -99,13 +183,45 @@ module "paladin_node" {
     kms_key_store = kaleido_platform_kms_wallet.wallet_0.name
   }
 
-  domains = var.domains
+  domains = local.domains
 
-  hostname              = var.publish_hostnames ? "${var.node_name_prefix}-${count.index + 1}" : null
-  read_registry_address = count.index == 0
+  hostname              = var.publish_hostnames ? local.admin_node_name : null
+  read_registry_address = true
+  network_registry      = module.paladin_network.registry
+
+  depends_on = [module.besu_node]
 }
 
-# ─── Outputs ────────────────────────────────────────────────────────────────────
+# Joiner nodes wait on the admin node, which deploys the registry.
+module "paladin_joiner_node" {
+  source = "../../modules/chaininfra-paladin-node"
+  count  = var.node_count - 1
+
+  environment_id          = local.environment_id
+  network_id              = module.paladin_network.network_id
+  stack_id                = module.paladin_network.stack_id
+  node_name               = "${var.node_name_prefix}-${count.index + 2}"
+  registry_admin_identity = var.registry_admin_identity
+  key_manager_service_id  = kaleido_platform_service.kms_0.id
+
+  base_ledger = {
+    type               = "local"
+    gateway_service_id = module.evm_gateway.service_id
+  }
+
+  wallets = {
+    kms_key_store = kaleido_platform_kms_wallet.wallet_0.name
+  }
+
+  domains = local.domains
+
+  hostname         = var.publish_hostnames ? "${var.node_name_prefix}-${count.index + 2}" : null
+  network_registry = module.paladin_network.registry
+
+  depends_on = [module.paladin_admin_node]
+}
+
+# Outputs
 
 output "network_id" {
   value = module.paladin_network.network_id
@@ -116,13 +232,21 @@ output "stack_id" {
 }
 
 output "node_service_ids" {
-  value = module.paladin_node[*].service_id
+  value = concat([module.paladin_admin_node.service_id], module.paladin_joiner_node[*].service_id)
 }
 
 output "node_endpoints" {
-  value = module.paladin_node[*].endpoints
+  value = concat([module.paladin_admin_node.endpoints], module.paladin_joiner_node[*].endpoints)
 }
 
 output "registry_address" {
-  value = module.paladin_node[0].registry_address
+  value = module.paladin_admin_node.registry_address
+}
+
+output "noto_factory_address" {
+  value = module.noto.factory_address
+}
+
+output "pente_factory_address" {
+  value = module.pente.factory_address
 }
