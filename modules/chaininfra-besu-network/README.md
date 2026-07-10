@@ -51,8 +51,9 @@ module "besu_network" {
 ### Bring-your-own genesis
 
 Render the genesis in HCL and supply it inline. The network switches to `manual`
-init mode and consumes the file verbatim as the `init` file set, so you own and
-upgrade the genesis over time:
+init mode and consumes the file verbatim as its init file set. The module names the
+init file set from a hash of the genesis content, so any edit to `genesis_json`
+automatically rolls the file set and re-triggers initialization:
 
 ```hcl
 module "besu_network" {
@@ -64,6 +65,12 @@ module "besu_network" {
     # ...
   })
 }
+```
+
+Or load a file from disk:
+
+```hcl
+  genesis_json = file("resources/genesis.json")
 ```
 
 ## Outputs

@@ -19,6 +19,40 @@ resource "kaleido_platform_service" "contract_manager_service"{
   config_json=jsonencode({})
 }
 
+## Key manager service
+
+resource "kaleido_platform_runtime" "key_manager_runtime"{
+  type = "KeyManager"
+  name = "key-manager"
+  environment = kaleido_platform_environment.env.id
+  config_json = jsonencode({})
+}
+
+
+resource "kaleido_platform_service" "key_manager_service"{
+  type = "KeyManager"
+  name = "key-manager"
+  environment = kaleido_platform_environment.env.id
+  runtime = kaleido_platform_runtime.key_manager_runtime.id
+  config_json=jsonencode({})
+}
+
+resource "kaleido_platform_kms_wallet" "key_manager_wallet"{
+  type = "kaleidokeystore"
+  name = "wallet"
+  environment = kaleido_platform_environment.env.id
+  service = kaleido_platform_service.key_manager_service.id
+  config_json = jsonencode({})
+}
+
+resource "kaleido_platform_kms_key" "key_manager_key"{
+  environment = kaleido_platform_environment.env.id
+  service = kaleido_platform_service.key_manager_service.id
+  wallet = kaleido_platform_kms_wallet.key_manager_wallet.id
+  name = "fund-holder-key"
+  public_identifier_types = ["address_ethereum"]
+}
+
 # Besu Network
 
 module "besu_network" {
@@ -30,10 +64,12 @@ module "besu_network" {
   chain_id = var.chain_id
 
   initial_balances = {
-    "0x12F62772C4652280d06E64CfBC9033d409559aD4" = "0x111111111111"
+    (kaleido_platform_kms_key.key_manager_key.address) = var.fund_holder_balance
   }
 
-  genesis_json = var.genesis_json != null ? file(var.genesis_json) : null
+  block_config_flags = {
+    zeroBaseFee = false
+  }
 
   qbft = {
     blockperiodseconds = 10
@@ -52,7 +88,7 @@ module "besu_validator_nodes" {
   signer         = true
   stack_id       = module.besu_network.stack_id
   count = var.validator_count
-  node_key = length(var.validator_node_keys) > 0 && count.index < length(var.validator_node_keys) ? var.validator_node_keys[count.index] : null
+  node_key = null
 }
 
 module "besu_rpc_nodes" {
@@ -85,7 +121,6 @@ module "block_indexer" {
   source = "../../modules/chaininfra-block-indexer"
 
   environment_id = kaleido_platform_environment.env.id
-  network_id     = module.besu_network.network_id
   stack_id       = module.besu_network.stack_id
   evm_gateway_service_id = module.gateway.service_id
   contract_manager_service_id = kaleido_platform_service.contract_manager_service.id

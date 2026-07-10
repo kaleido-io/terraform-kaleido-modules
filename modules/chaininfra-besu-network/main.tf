@@ -2,9 +2,12 @@
 
 locals {
   # Supplying an inline genesis takes over initialization: the platform stops
-  # bootstrapping a genesis and instead consumes the `init` file set verbatim,
   # so callers can own and upgrade the genesis over time.
   use_inline_genesis = var.genesis_json != null
+
+  # Derive the name from a content hash so any edit to `genesis_json` rolls the
+  # file set (and re-inits) automatically — callers only ever pass updated `genesis_json`.
+  genesis_file_set = local.use_inline_genesis ? "genesis-${substr(sha256(var.genesis_json), 0, 12)}" : null
 
   bootstrap_options = merge(
     {
@@ -34,7 +37,7 @@ resource "kaleido_platform_network" "this" {
   config_json = jsonencode(local.network_config)
 
   file_sets = local.use_inline_genesis ? {
-    init = {
+    (local.genesis_file_set) = {
       files = {
         "genesis.json" = {
           type = "json"
@@ -43,7 +46,7 @@ resource "kaleido_platform_network" "this" {
       }
     }
   } : {}
-  init_files = local.use_inline_genesis ? "init" : null
+  init_files = local.genesis_file_set
 }
 
 resource "kaleido_platform_stack" "this" {

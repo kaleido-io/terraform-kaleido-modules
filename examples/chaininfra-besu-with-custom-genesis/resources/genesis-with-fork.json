@@ -1,0 +1,24 @@
+{
+  "alloc": {
+    "0xd840d7b1ba7f98f7341c50b9acee5930ae1576b6": {
+      "balance": "0x111111111111"
+    }
+  },
+  "coinbase": "0x0000000000000000000000000000000000000000",
+  "config": {
+    "berlinBlock": 0,
+    "chainId": 5678,
+    "contractSizeLimit": 98304,
+    "qbft": {
+      "blockperiodseconds": 2,
+      "epochlength": 1000,
+      "requesttimeoutseconds": 10
+    },
+    "shanghaiTime": 0,
+    "zeroBaseFee": true
+  },
+  "difficulty": "0x1",
+  "extraData": "0xf83aa00000000000000000000000000000000000000000000000000000000000000000d594b49a48d9dc3eee767de6709183d509b1d99641bdc080c0",
+  "gasLimit": "0x2fefd800",
+  "mixHash": "0x63746963616c2062797a616e74696e65206661756c7420746f6c6572616e6365"
+}

@@ -62,20 +62,10 @@ variable "signer" {
   description = "besu-node-service-config.signer — whether the node is added as a signer/validator to the network. Defaults to false (non-signing node)."
 }
 
-variable "mode" {
-  type        = string
-  default     = "active"
-  description = "besu-node-service-config.mode — `active` nodes can receive RPC requests; `standby` nodes cannot."
-  validation {
-    condition     = contains(["active", "standby"], var.mode)
-    error_message = "mode must be one of: active, standby."
-  }
-}
-
 variable "routable" {
   type        = bool
   default     = true
-  description = "besu-node-service-config.routable — whether the node is eligible for inclusion as a back end in a gateway."
+  description = "besu-node-service-config.routable — whether the node is eligible for inclusion as a backend in a gateway."
 }
 
 variable "sync_mode" {

@@ -4,7 +4,7 @@ Deploys a single Block Indexer (`BlockIndexer` runtime + service) into an existi
 chain-infrastructure stack. The indexer connects to an EVM gateway and optionally a
 ContractManager for contract metadata.
 
-## Required Settings
+## Required settings
 
 | Setting | Description |
 |---------|-------------|

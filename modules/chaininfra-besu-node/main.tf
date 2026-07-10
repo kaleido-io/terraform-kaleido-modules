@@ -5,7 +5,6 @@ locals {
     {
       network           = { id = var.network_id }
       routable          = var.routable
-      mode              = var.mode
       signer            = var.signer
       syncMode          = var.sync_mode
       logLevel          = var.log_level
@@ -31,6 +30,7 @@ resource "kaleido_platform_runtime" "this" {
 
   size         = var.runtime_size
   zone         = var.zone
+  sub_zone     = var.subzone
   storage_size = var.storage_size
   storage_type = var.storage_type
 }
