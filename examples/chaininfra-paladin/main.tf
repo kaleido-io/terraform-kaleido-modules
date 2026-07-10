@@ -180,7 +180,8 @@ module "paladin_admin_node" {
   }
 
   wallets = {
-    kms_key_store = kaleido_platform_kms_wallet.wallet_0.name
+    kms_key_store   = kaleido_platform_kms_wallet.wallet_0.name
+    kms_folder_path = local.admin_node_name
   }
 
   domains = local.domains
@@ -210,7 +211,8 @@ module "paladin_joiner_node" {
   }
 
   wallets = {
-    kms_key_store = kaleido_platform_kms_wallet.wallet_0.name
+    kms_key_store   = kaleido_platform_kms_wallet.wallet_0.name
+    kms_folder_path = "${var.node_name_prefix}-${count.index + 2}"
   }
 
   domains = local.domains
