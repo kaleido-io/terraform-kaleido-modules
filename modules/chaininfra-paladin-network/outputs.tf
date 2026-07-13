@@ -15,8 +15,8 @@ output "network_name" {
 
 output "registry" {
   value = {
-    mode  = var.registry_mode
-    admin = var.registry_admin
+    mode          = var.registry_mode
+    registry_node = var.registry_node
   }
-  description = "The network's EVM registry configuration"
+  description = "The network's EVM registry configuration."
 }

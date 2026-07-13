@@ -8,8 +8,8 @@ locals {
     } : {},
     var.registry_mode == "deploy" ? {
       admin = {
-        identity = var.registry_admin.identity
-        nodeName = var.registry_admin.node_name
+        identity = var.registry_node
+        nodeName = var.registry_node
       }
     } : {},
   )

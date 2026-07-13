@@ -1,16 +1,22 @@
 # chaininfra-paladin-pente
 
 Registers the **pente** domain for a Paladin network: builds and deploys the pente
-factory contracts (once per network, by the operator), and emits a `domain` config
+factory contracts (once per base ledger), and emits a `domain` config
 fragment for [chaininfra-paladin-node](../chaininfra-paladin-node)'s `domains`
 variable (every node).
 
 ## Modes
 
-| | `mode = "deploy"` | `mode = "existing"` |
-|---|---|---|
-| `create_builds = true` (default) | builds + deploys — **operator** | builds only — **joiner with ABI visibility** |
-| `create_builds = false` | invalid | config only, no resources — **lightweight joiner** |
+The factory contracts live on the base ledger, not on a specific Paladin network's
+registry, so only one call of this module per base ledger should deploy them — other
+calls (e.g. a second Paladin network sharing the same base ledger) just reference the
+already-deployed factory.
+
+| `mode` | Behavior |
+|--------|----------|
+| `deploy` (default) | builds + deploys the factory contracts |
+| `join_with_builds` | builds the factory contracts in ContractManager (for ABI visibility), uses a pre-existing deployment |
+| `join` | uses a pre-existing deployment — no ContractManager resources created |
 
 ## Settings
 
@@ -18,13 +24,13 @@ variable (every node).
 |---------|---------|-------|
 | `paladin_ref` | required | Paladin git ref (branch or commit SHA) to source contracts from |
 | `paladin_repo` | `https://github.com/LFDT-Paladin/paladin` | Paladin GitHub repo URL — can be overriden to build from a fork |
+| `factory_initializer_selector` | `0x8129fc1c` | selector for Pente factory `initialize()` |
 | `environment_id` | required | environment holding the services and network |
 | `contracts_service_id` | required | ContractManagerService for builds/deploys |
-| `mode` | `deploy` | `deploy` deploys the factory; `existing` wraps an already-deployed one |
+| `mode` | `deploy` | `deploy` builds + deploys the factory contracts; `join` / `join_with_builds` use a pre-existing deployment (see [Modes](#modes)) |
 | `txnmanager_service_id` | `null` | TransactionManagerService — **required in `deploy` mode** |
 | `signing_key_address` / `signing_key_uri` | `null` | deploy signer — **exactly one required in `deploy` mode** |
-| `existing_factory_address` | `null` | factory (proxy) address — **required in `existing` mode** |
-| `create_builds` | `true` | CMS builds for ABI visibility; must stay `true` in `deploy` mode |
+| `existing_factory_address` | `null` | factory (proxy) address — **required in `join` / `join_with_builds` mode** |
 | `plugin_class` | `io.kaleido.paladin.pente.domain.PenteDomainFactory` | plugin entry-point class |
 | `resource_prefix` | `""` | prefix for build/deploy names (multiple networks per CMS) |
 | `build_path` | `Paladin` | ContractManager folder for the builds |
@@ -52,13 +58,14 @@ module "paladin_node_1" {
 }
 ```
 
-Joiners set `mode = "existing"` and `existing_factory_address` to the operator's
+Module calls that reference an existing factory set `mode = "join"` (or
+`"join_with_builds"`) and `existing_factory_address` to the deploying call's
 published `factory_address` output.
 
 ## Outputs
 
 | Output | Description |
 |--------|-------------|
-| `factory_address` | Factory (proxy) address — publish to joiners |
+| `factory_address` | Factory (proxy) address — publish for `join` / `join_with_builds` module calls |
 | `domain` | Ready-to-merge `domains` fragment for `chaininfra-paladin-node` |
 | `build_ids` | CMS build IDs keyed by contract |

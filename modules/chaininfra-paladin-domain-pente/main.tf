@@ -1,5 +1,6 @@
 locals {
-  deploy = var.mode == "deploy"
+  deploy        = var.mode == "deploy"
+  create_builds = var.mode != "join"
 
   # Either the signing_key_uri or signing_key_address of the intended signer
   # URI and address are interchangeable
@@ -25,16 +26,16 @@ locals {
 
 # ContractManager builds
 resource "kaleido_platform_cms_build" "pente" {
-  count = var.create_builds ? 1 : 0
+  count = local.create_builds ? 1 : 0
 
   environment  = var.environment_id
   service      = var.contracts_service_id
   type         = "github"
   name         = "${var.resource_prefix}pente"
   path         = var.build_path
-  solc_version = "v0.8.27+commit.40a35a09"
+  solc_version = "v0.8.36+commit.8a079791"
   evm_version  = "shanghai"
-  optimizer    = { enabled = true, runs = 200, via_ir = true }
+  optimizer    = var.contract_optimizer
 
   github = {
     contract_url  = local.sources.pente.contract_url
@@ -43,16 +44,16 @@ resource "kaleido_platform_cms_build" "pente" {
 }
 
 resource "kaleido_platform_cms_build" "pente_factory" {
-  count = var.create_builds ? 1 : 0
+  count = local.create_builds ? 1 : 0
 
   environment  = var.environment_id
   service      = var.contracts_service_id
   type         = "github"
   name         = "${var.resource_prefix}pente_factory"
   path         = var.build_path
-  solc_version = "v0.8.27+commit.40a35a09"
+  solc_version = "v0.8.36+commit.8a079791"
   evm_version  = "shanghai"
-  optimizer    = { enabled = true, runs = 200, via_ir = true }
+  optimizer    = var.contract_optimizer
 
   github = {
     contract_url  = local.sources.pente_factory.contract_url
@@ -63,16 +64,16 @@ resource "kaleido_platform_cms_build" "pente_factory" {
 }
 
 resource "kaleido_platform_cms_build" "pente_factory_proxy" {
-  count = var.create_builds ? 1 : 0
+  count = local.create_builds ? 1 : 0
 
   environment  = var.environment_id
   service      = var.contracts_service_id
   type         = "github"
   name         = "${var.resource_prefix}pente_factory_proxy"
   path         = var.build_path
-  solc_version = "v0.8.27+commit.40a35a09"
+  solc_version = "v0.8.36+commit.8a079791"
   evm_version  = "shanghai"
-  optimizer    = { enabled = true, runs = 200, via_ir = true }
+  optimizer    = var.contract_optimizer
 
   github = {
     contract_url  = local.sources.pente_factory_proxy.contract_url
@@ -119,14 +120,18 @@ resource "kaleido_platform_cms_action_deploy" "factory_proxy" {
   transaction_manager = var.txnmanager_service_id
   signing_key         = local.signing_identity
 
+  # ERC1967Proxy constructor args: (implementation, initializer calldata).
+  # PenteFactory's initializer takes no arguments, so the calldata is just the
+  # selector (default 0x8129fc1c = initialize()), delegatecalled by the proxy
+  # at deploy time.
   params_json = jsonencode([
     kaleido_platform_cms_action_deploy.factory_impl[0].contract_address,
-    "0x8129fc1c"
+    var.factory_initializer_selector
   ])
 }
 
 locals {
-  factory_address = var.mode == "existing" ? var.existing_factory_address : try(
+  factory_address = !local.deploy ? var.existing_factory_address : try(
     kaleido_platform_cms_action_deploy.factory_proxy[0].contract_address, null
   )
 }

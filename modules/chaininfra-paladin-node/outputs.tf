@@ -24,6 +24,6 @@ output "hostnames" {
 }
 
 output "registry_address" {
-  value       = var.read_registry_address ? data.kaleido_platform_paladin_evm_registry.this[0].address : null
-  description = "Address of the network's EVM registry contract."
+  value       = local.is_registry_node ? data.kaleido_platform_paladin_evm_registry.this[0].address : null
+  description = "Address of the network's EVM registry contract. Set on the registry node in deploy mode; null on all other nodes."
 }

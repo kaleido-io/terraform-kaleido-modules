@@ -1,6 +1,14 @@
 # ─── PaladinNode runtime + service ──────────────────────────────────────────────
 
 locals {
+  # In deploy mode the registry node submits the registry deploy transaction, so it
+  # is the only node whose registry address read will ever complete.
+  is_registry_node = (
+    var.network_registry != null
+    && var.network_registry.mode == "deploy"
+    && var.network_registry.registry_node == var.node_name
+  )
+
   base_ledger = merge(
     { type = var.base_ledger.type },
     var.base_ledger.type == "local" ? {
@@ -36,14 +44,16 @@ locals {
 
   service_config = merge(
     {
-      network               = { id = var.network_id }
-      keyManager            = { id = var.key_manager_service_id }
-      baseLedgerEndpoint    = local.base_ledger
-      registryAdminIdentity = var.registry_admin_identity
+      network            = { id = var.network_id }
+      keyManager         = { id = var.key_manager_service_id }
+      baseLedgerEndpoint = local.base_ledger
+      # registryAdminIdentity is required by the PaladinNodeService schema but is not
+      # consumed by the platform (the network CR drives registry operations, and the
+      # registry is rootless). Send the node's own name.
+      registryAdminIdentity = var.node_name
       wallets               = local.wallets
     },
-    # baseConfig is a JSON string within the config (x-kld-type-hint=jsonstring),
-    # so it is encoded separately and double-encoded overall.
+    # baseConfig is a JSON string within the config,
     length(local.base_config) > 0 ? { baseConfig = jsonencode(local.base_config) } : {},
   )
 }
@@ -68,6 +78,10 @@ resource "kaleido_platform_service" "this" {
   stack_id    = var.stack_id
   runtime     = kaleido_platform_runtime.this.id
   config_json = jsonencode(local.service_config)
+  # Nodes can't reach Ready until the registry node deploys the registry and
+  # registers them, so blocking here risks exhausting Terraform's default
+  # parallelism when creating many nodes in one apply.
+  wait_for_ready = false
 
   cred_sets = merge(
     var.base_ledger.auth != null ? {
@@ -86,20 +100,6 @@ resource "kaleido_platform_service" "this" {
       }
     } : {},
   )
-
-  lifecycle {
-    # The registry deploy transaction is signed by the admin node's
-    # registryAdminIdentity — if it differs from the identity named in the
-    # network's registry_admin, the registry is administered by the wrong key.
-    precondition {
-      condition = (
-        var.network_registry == null ||
-        try(var.network_registry.admin.node_name, null) != var.node_name ||
-        var.registry_admin_identity == var.network_registry.admin.identity
-      )
-      error_message = "This node is the network's registry admin (node_name matches network_registry.admin.node_name), but registry_admin_identity does not match network_registry.admin.identity. The registry deploy transaction would be signed by a different identity than the network expects to administer the registry."
-    }
-  }
 }
 
 resource "kaleido_platform_hostname" "this" {
@@ -113,19 +113,8 @@ resource "kaleido_platform_hostname" "this" {
 }
 
 data "kaleido_platform_paladin_evm_registry" "this" {
-  count       = var.read_registry_address ? 1 : 0
+  count       = local.is_registry_node ? 1 : 0
   environment = var.environment_id
   network     = var.network_id
   depends_on  = [kaleido_platform_service.this]
-
-  lifecycle {
-    precondition {
-      condition     = var.network_registry == null || var.network_registry.mode == "deploy"
-      error_message = "read_registry_address = true but network_registry.mode is not 'deploy'. There is no registry deploy transaction to wait for, so the read would poll forever. In existing mode the registry address is already known — consume it from the network configuration instead."
-    }
-    precondition {
-      condition     = var.network_registry == null || try(var.network_registry.admin.node_name, null) == var.node_name
-      error_message = "read_registry_address = true on a node whose node_name does not match network_registry.admin.node_name. The registry deploy transaction is only submitted via the admin node — set read_registry_address = true on that node."
-    }
-  }
 }

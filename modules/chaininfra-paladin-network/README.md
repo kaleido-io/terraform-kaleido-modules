@@ -8,8 +8,8 @@ the base ledger, deployed or joined per `registry_mode`.
 
 | `registry_mode` | Behavior |
 |---|---|
-| `deploy` (default) | platform deploys a new registry contract via the admin node — **operator**; requires `registry_admin` |
-| `existing` | join a registry contract already on the base ledger — **joiner**; requires `existing_registry_address` |
+| `deploy` (default) | platform deploys a new registry contract via the registry node, rootless (no identity owns it) — requires `registry_node` |
+| `existing` | join a registry contract already on the base ledger — requires `existing_registry_address` |
 
 ## Settings
 
@@ -19,7 +19,7 @@ the base ledger, deployed or joined per `registry_mode`.
 | `network_name` | required | name of the `PaladinNetwork` |
 | `stack_name` | `network_name` | name of the chain-infrastructure stack |
 | `registry_mode` | `deploy` | `deploy` deploys a new EVM registry contract; `existing` joins one |
-| `registry_admin` | `null` | `{ identity, node_name }` that deploys/administers the registry — **required in `deploy` mode**; `node_name` must match the admin node's `node_name` |
+| `registry_node` | `null` | name of the PaladinNodeService that deploys the registry (by convention the first node) — **required in `deploy` mode**; must match that node's `node_name` |
 | `existing_registry_address` | `null` | registry contract address — **required in `existing` mode** |
 
 ## Usage
@@ -32,16 +32,11 @@ module "paladin_network" {
   network_name   = "asset-net"
 
   registry_mode = "deploy"
-  registry_admin = {
-    identity  = "registry.admin"
-    node_name = "node-1" # must match a chaininfra-paladin-node node_name on this network
-  }
+  registry_node = "node-1" # must match a chaininfra-paladin-node node_name on this network
 }
 ```
 
-In `deploy` mode the registry address only exists after the admin node has run, so it
-is read back via [chaininfra-paladin-node](../chaininfra-paladin-node)'s
-`read_registry_address` flag / `registry_address` output — not from this module.
+In `deploy` mode the registry address is read from the `registry_address` terraform output of the registry node.
 
 ## Outputs
 
@@ -50,4 +45,4 @@ is read back via [chaininfra-paladin-node](../chaininfra-paladin-node)'s
 | `network_id` | Paladin network ID — feeds `chaininfra-paladin-node` `network_id` |
 | `stack_id` | Chain-infrastructure stack ID — feeds `chaininfra-paladin-node` `stack_id` |
 | `network_name` | Name of the `PaladinNetwork` |
-| `registry` | `{ mode, admin }` — feed to each node's `network_registry` for plan-time validation |
+| `registry` | `{ mode, registry_node }` — feed to each node's `network_registry` for plan-time validation |

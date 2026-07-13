@@ -17,6 +17,16 @@ variable "paladin_repo" {
   }
 }
 
+variable "factory_initializer_selector" {
+  type        = string
+  default     = "0xc4d66de8"
+  description = "4-byte function selector of the NotoFactory initializer, delegatecalled by the ERC1967 proxy at deploy time. The module appends the deployed Noto implementation address (ABI-encoded, 32-byte left-padded) as the single argument. Defaults to the selector for initialize(address). Override only if the factory initializer function changes in the pinned paladin_ref."
+  validation {
+    condition     = can(regex("^0x[0-9a-fA-F]{8}$", var.factory_initializer_selector))
+    error_message = "factory_initializer_selector must be a 0x-prefixed 4-byte function selector, e.g. 0xc4d66de8."
+  }
+}
+
 variable "environment_id" {
   type        = string
   description = "ID of the environment holding the ContractManager service and the target Paladin network."
@@ -62,30 +72,20 @@ variable "signing_key_uri" {
 variable "mode" {
   type        = string
   default     = "deploy"
-  description = "`deploy` builds and deploys the noto factory contract(s) to the base ledger; `existing` composes the domain config around a factory already deployed on the network."
+  description = "`deploy` builds and deploys the noto factory contract(s). `join_with_builds` builds the contracts in this account's ContractManager (for ABI visibility) but uses a pre-existing deployment. `join` also uses a pre-existing deployment, with no ContractManager resources created."
   validation {
-    condition     = contains(["deploy", "existing"], var.mode)
-    error_message = "mode must be one of: deploy, existing."
+    condition     = contains(["deploy", "join", "join_with_builds"], var.mode)
+    error_message = "mode must be one of: deploy, join, join_with_builds."
   }
 }
 
-variable "existing_factory_address" {
+variable "factory_address" {
   type        = string
   default     = null
-  description = "Address of an already-deployed noto factory (ERC1967 proxy address). Required when mode='existing'."
+  description = "Address of an already-deployed noto factory (ERC1967 proxy address). Required when mode = join or mode = join_with_builds."
   validation {
-    condition     = var.mode != "existing" || var.existing_factory_address != null
-    error_message = "existing_factory_address is required when mode = existing."
-  }
-}
-
-variable "create_builds" {
-  type        = bool
-  default     = true
-  description = "Create the builds resources so the contract ABIs are visible in this account's ContractManager. Must be true when mode = deploy (the deploy actions reference the builds). Set false in existing mode for pure config composition with no platform resources."
-  validation {
-    condition     = var.mode != "deploy" || var.create_builds
-    error_message = "create_builds must be true when mode = deploy (the deploy actions reference the builds)."
+    condition     = var.mode == "deploy" || var.factory_address != null
+    error_message = "factory_address is required when mode = join or mode = join_with_builds."
   }
 }
 
@@ -99,4 +99,14 @@ variable "build_path" {
   type        = string
   default     = "Paladin"
   description = "ContractManager folder the builds are grouped under."
+}
+
+variable "contract_optimizer" {
+  type = object({
+    enabled = optional(bool)
+    runs    = optional(number)
+    via_ir  = optional(bool)
+  })
+  default     = { enabled = true, runs = 200, via_ir = true }
+  description = "Solc optimizer settings applied to all contract builds."
 }

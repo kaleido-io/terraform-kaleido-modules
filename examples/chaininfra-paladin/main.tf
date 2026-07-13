@@ -4,8 +4,8 @@ resource "kaleido_platform_environment" "env_0" {
 }
 
 locals {
-  environment_id  = var.environment_id != "" ? var.environment_id : kaleido_platform_environment.env_0[0].id
-  admin_node_name = "${var.node_name_prefix}-1"
+  environment_id = var.environment_id != "" ? var.environment_id : kaleido_platform_environment.env_0[0].id
+  node_names     = [for i in range(var.node_count) : "${var.node_name_prefix}-${i + 1}"]
 }
 
 # Base Ledger
@@ -37,18 +37,29 @@ module "evm_gateway" {
   gateway_name   = "${var.besu_network_name}-gateway"
 }
 
+module "block_indexer" {
+  source = "../../modules/chaininfra-block-indexer"
+
+  environment_id              = local.environment_id
+  network_id                  = module.besu_network.network_id
+  stack_id                    = module.besu_network.stack_id
+  evm_gateway_service_id      = module.evm_gateway.service_id
+  contract_manager_service_id = kaleido_platform_service.cms_0.id
+  hostname                    = "${var.besu_network_name}-block-indexer"
+}
+
 # Key Management
 
 resource "kaleido_platform_runtime" "kms_0" {
   type        = "KeyManager"
-  name        = "kms1"
+  name        = "kms"
   environment = local.environment_id
   config_json = jsonencode({})
 }
 
 resource "kaleido_platform_service" "kms_0" {
   type        = "KeyManager"
-  name        = "kms1"
+  name        = "kms"
   environment = local.environment_id
   runtime     = kaleido_platform_runtime.kms_0.id
   config_json = jsonencode({})
@@ -62,8 +73,6 @@ resource "kaleido_platform_kms_wallet" "wallet_0" {
   config_json = jsonencode({})
 }
 
-# Deployer key for the domain factories — the signer becomes the factory owner,
-# so it should not be a node wallet key.
 resource "kaleido_platform_kms_key" "domain_deployer" {
   name        = "domain-deployer"
   environment = local.environment_id
@@ -75,14 +84,14 @@ resource "kaleido_platform_kms_key" "domain_deployer" {
 
 resource "kaleido_platform_runtime" "cms_0" {
   type        = "ContractManager"
-  name        = "contracts1"
+  name        = "contracts"
   environment = local.environment_id
   config_json = jsonencode({})
 }
 
 resource "kaleido_platform_service" "cms_0" {
   type        = "ContractManager"
-  name        = "contracts1"
+  name        = "contracts"
   environment = local.environment_id
   runtime     = kaleido_platform_runtime.cms_0.id
   config_json = jsonencode({})
@@ -90,14 +99,14 @@ resource "kaleido_platform_service" "cms_0" {
 
 resource "kaleido_platform_runtime" "txm_0" {
   type        = "TransactionManager"
-  name        = "txm1"
+  name        = "txm"
   environment = local.environment_id
   config_json = jsonencode({})
 }
 
 resource "kaleido_platform_service" "txm_0" {
   type        = "TransactionManager"
-  name        = "txm1"
+  name        = "txm"
   environment = local.environment_id
   runtime     = kaleido_platform_runtime.txm_0.id
   config_json = jsonencode({
@@ -115,7 +124,7 @@ resource "kaleido_platform_service" "txm_0" {
 # Paladin Domains
 
 module "noto" {
-  source = "../../modules/chaininfra-paladin-noto"
+  source = "../../modules/chaininfra-paladin-domain-noto"
 
   paladin_repo          = var.paladin_repo
   paladin_ref           = var.paladin_ref
@@ -130,7 +139,7 @@ module "noto" {
 }
 
 module "pente" {
-  source = "../../modules/chaininfra-paladin-pente"
+  source = "../../modules/chaininfra-paladin-domain-pente"
 
   paladin_repo          = var.paladin_repo
   paladin_ref           = var.paladin_ref
@@ -158,21 +167,18 @@ module "paladin_network" {
   network_name   = var.network_name
 
   registry_mode = "deploy"
-  registry_admin = {
-    identity  = var.registry_admin_identity
-    node_name = local.admin_node_name
-  }
+  registry_node = local.node_names[0]
 }
 
-module "paladin_admin_node" {
+module "paladin_node" {
   source = "../../modules/chaininfra-paladin-node"
+  count  = var.node_count
 
-  environment_id          = local.environment_id
-  network_id              = module.paladin_network.network_id
-  stack_id                = module.paladin_network.stack_id
-  node_name               = local.admin_node_name
-  registry_admin_identity = var.registry_admin_identity
-  key_manager_service_id  = kaleido_platform_service.kms_0.id
+  environment_id         = local.environment_id
+  network_id             = module.paladin_network.network_id
+  stack_id               = module.paladin_network.stack_id
+  node_name              = local.node_names[count.index]
+  key_manager_service_id = kaleido_platform_service.kms_0.id
 
   base_ledger = {
     type               = "local"
@@ -181,46 +187,15 @@ module "paladin_admin_node" {
 
   wallets = {
     kms_key_store   = kaleido_platform_kms_wallet.wallet_0.name
-    kms_folder_path = local.admin_node_name
+    kms_folder_path = local.node_names[count.index]
   }
 
   domains = local.domains
 
-  hostname              = var.publish_hostnames ? local.admin_node_name : null
-  read_registry_address = true
-  network_registry      = module.paladin_network.registry
-
-  depends_on = [module.besu_node]
-}
-
-# Joiner nodes wait on the admin node, which deploys the registry.
-module "paladin_joiner_node" {
-  source = "../../modules/chaininfra-paladin-node"
-  count  = var.node_count - 1
-
-  environment_id          = local.environment_id
-  network_id              = module.paladin_network.network_id
-  stack_id                = module.paladin_network.stack_id
-  node_name               = "${var.node_name_prefix}-${count.index + 2}"
-  registry_admin_identity = var.registry_admin_identity
-  key_manager_service_id  = kaleido_platform_service.kms_0.id
-
-  base_ledger = {
-    type               = "local"
-    gateway_service_id = module.evm_gateway.service_id
-  }
-
-  wallets = {
-    kms_key_store   = kaleido_platform_kms_wallet.wallet_0.name
-    kms_folder_path = "${var.node_name_prefix}-${count.index + 2}"
-  }
-
-  domains = local.domains
-
-  hostname         = var.publish_hostnames ? "${var.node_name_prefix}-${count.index + 2}" : null
+  hostname         = var.publish_hostnames ? local.node_names[count.index] : null
   network_registry = module.paladin_network.registry
 
-  depends_on = [module.paladin_admin_node]
+  depends_on = [module.besu_node]
 }
 
 # Outputs
@@ -234,15 +209,15 @@ output "stack_id" {
 }
 
 output "node_service_ids" {
-  value = concat([module.paladin_admin_node.service_id], module.paladin_joiner_node[*].service_id)
+  value = module.paladin_node[*].service_id
 }
 
 output "node_endpoints" {
-  value = concat([module.paladin_admin_node.endpoints], module.paladin_joiner_node[*].endpoints)
+  value = module.paladin_node[*].endpoints
 }
 
 output "registry_address" {
-  value = module.paladin_admin_node.registry_address
+  value = module.paladin_node[0].registry_address
 }
 
 output "noto_factory_address" {

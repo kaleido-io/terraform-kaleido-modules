@@ -17,7 +17,7 @@ variable "stack_name" {
 variable "registry_mode" {
   type        = string
   default     = "deploy"
-  description = "`deploy` has the platform deploy a new EVM registry contract via the admin node; `existing` joins a registry already deployed on the base ledger."
+  description = "`deploy` has the platform deploy a new EVM registry contract via the registry node; `existing` joins a registry already deployed on the base ledger."
   validation {
     condition     = contains(["deploy", "existing"], var.registry_mode)
     error_message = "registry_mode must be one of: deploy, existing."
@@ -34,15 +34,12 @@ variable "existing_registry_address" {
   }
 }
 
-variable "registry_admin" {
-  type = object({
-    identity  = string
-    node_name = string
-  })
+variable "registry_node" {
+  type        = string
   default     = null
-  description = "The identity and PaladinNodeService name that deploys and administers the EVM registry. Required when registry_mode = deploy; node_name must match the `node_name` of a chaininfra-paladin-node created against this network."
+  description = "Name of the PaladinNodeService that deploys the EVM registry (by convention the first node). Required when registry_mode = deploy; must match the `node_name` of a chaininfra-paladin-node created against this network."
   validation {
-    condition     = var.registry_mode != "deploy" || var.registry_admin != null
-    error_message = "registry_admin is required when registry_mode = deploy."
+    condition     = var.registry_mode != "deploy" || var.registry_node != null
+    error_message = "registry_node is required when registry_mode = deploy."
   }
 }

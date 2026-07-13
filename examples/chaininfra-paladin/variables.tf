@@ -33,11 +33,11 @@ variable "network_name" {
 
 variable "node_count" {
   type        = number
-  description = "Number of Paladin nodes to create. Node 1 is the registry admin; the rest are joiners."
-  default     = 2
+  description = "Number of Paladin nodes to create. Node 1 deploys the registry."
+  default     = 3
   validation {
     condition     = var.node_count >= 1
-    error_message = "node_count must be at least 1 (node 1 is the registry admin)."
+    error_message = "node_count must be at least 1 (node 1 deploys the registry)."
   }
 }
 
@@ -45,12 +45,6 @@ variable "node_name_prefix" {
   type        = string
   description = "Prefix for Paladin node names (`<prefix>-1` ... `<prefix>-N`)."
   default     = "paladin-node"
-}
-
-variable "registry_admin_identity" {
-  type        = string
-  description = "Identity that deploys and administers the EVM registry."
-  default     = "registry.admin"
 }
 
 variable "paladin_ref" {

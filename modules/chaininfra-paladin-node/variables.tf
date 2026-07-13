@@ -15,7 +15,7 @@ variable "stack_id" {
 
 variable "node_name" {
   type        = string
-  description = "Name of the Paladin node runtime and service. On the registry-admin node (deploy mode) this must equal the network's registry_admin.node_name."
+  description = "Name of the Paladin node runtime and service. On the registry node (deploy mode) this must equal the network's registry_node."
 }
 
 variable "runtime_size" {
@@ -31,7 +31,7 @@ variable "runtime_size" {
 variable "runtime_zone" {
   type        = string
   default     = null
-  description = "Availability/deployment zone for the runtime. Uses the platform default if not specified." 
+  description = "Availability/deployment zone for the runtime. Uses the platform default if not specified."
 }
 
 variable "storage_size" {
@@ -83,11 +83,6 @@ variable "base_ledger" {
   }
 }
 
-variable "registry_admin_identity" {
-  type        = string
-  description = "identity used to administer registry entries for this node. Required on every node; must match the network's registry_admin.identity in deploy mode."
-}
-
 variable "wallets" {
   type = object({
     kms_key_store      = string
@@ -117,28 +112,19 @@ variable "hostname" {
   description = "Optional hostname to publish the node's jsonrpc/jsonrpcws endpoints on. If omitted, will use the platform default hostname."
 }
 
-variable "read_registry_address" {
-  type        = bool
-  default     = false
-  description = "Set true on the registry-admin node (deploy mode) to read back the deployed EVM registry address once the node is up. Leave false on other nodes and in existing mode."
-}
-
 variable "network_registry" {
   type = object({
-    mode = string
-    admin = optional(object({
-      identity  = string
-      node_name = string
-    }))
+    mode          = string
+    registry_node = optional(string)
   })
   default     = null
-  description = "The network's EVM registry configuration." 
+  description = "The network's EVM registry configuration. When this node is the registry node in deploy mode, the module reads back the deployed registry address and exposes it as the registry_address output."
   validation {
     condition     = var.network_registry == null || contains(["deploy", "existing"], var.network_registry.mode)
     error_message = "network_registry.mode must be one of: deploy, existing."
   }
   validation {
-    condition     = var.network_registry == null || var.network_registry.mode != "deploy" || var.network_registry.admin != null
-    error_message = "network_registry.admin is required when network_registry.mode = deploy."
+    condition     = var.network_registry == null || var.network_registry.mode != "deploy" || var.network_registry.registry_node != null
+    error_message = "network_registry.registry_node is required when network_registry.mode = deploy."
   }
 }
