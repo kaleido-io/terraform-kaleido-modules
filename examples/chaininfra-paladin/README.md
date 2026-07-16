@@ -11,8 +11,9 @@ Create an environment with:
     - HD wallet backing the Paladin node keys (KMS folder per node)
     - Domain deployer key for the domain factory contracts
 * Contract Manager
-* Transaction Manager
-* Paladin Domains (deployed via the Contract Manager)
+* Workflow Engine (required by the EVM Connector)
+* EVM Connector (web3 middleware) 
+* Paladin Domains 
     - Noto
     - Pente
 * Chain Infrastructure Stack - Paladin

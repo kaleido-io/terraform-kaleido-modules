@@ -8,8 +8,11 @@ the base ledger, deployed or joined per `registry_mode`.
 
 | `registry_mode` | Behavior |
 |---|---|
-| `deploy` (default) | platform deploys a new registry contract via the registry node, rootless (no identity owns it) — requires `registry_node` |
+| `deploy` (default) | platform deploys a new registry contract via the registry node, rootless (no identity owns it) |
 | `existing` | join a registry contract already on the base ledger — requires `existing_registry_address` |
+
+In **both** modes the platform submits every node's registration transactions through
+the `registry_node`, so it is always required.
 
 ## Settings
 
@@ -19,7 +22,7 @@ the base ledger, deployed or joined per `registry_mode`.
 | `network_name` | required | name of the `PaladinNetwork` |
 | `stack_name` | `network_name` | name of the chain-infrastructure stack |
 | `registry_mode` | `deploy` | `deploy` deploys a new EVM registry contract; `existing` joins one |
-| `registry_node` | `null` | name of the PaladinNodeService that deploys the registry (by convention the first node) — **required in `deploy` mode**; must match that node's `node_name` |
+| `registry_node` | required | name of the PaladinNodeService the platform submits registry transactions through (by convention the first node) — deploys the contract in `deploy` mode; must match that node's `node_name` |
 | `existing_registry_address` | `null` | registry contract address — **required in `existing` mode** |
 
 ## Usage

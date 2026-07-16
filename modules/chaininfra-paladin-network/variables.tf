@@ -36,10 +36,9 @@ variable "existing_registry_address" {
 
 variable "registry_node" {
   type        = string
-  default     = null
-  description = "Name of the PaladinNodeService that deploys the EVM registry (by convention the first node). Required when registry_mode = deploy; must match the `node_name` of a chaininfra-paladin-node created against this network."
+  description = "Name of the PaladinNodeService the platform submits registry transactions through (by convention the first node): the registry contract deploy when registry_mode = deploy, and the registration transactions for every node in either mode. Must match the `node_name` of a chaininfra-paladin-node created against this network."
   validation {
-    condition     = var.registry_mode != "deploy" || var.registry_node != null
-    error_message = "registry_node is required when registry_mode = deploy."
+    condition     = var.registry_node != null
+    error_message = "registry_node is required — the platform submits node registration transactions through it in both registry modes."
   }
 }

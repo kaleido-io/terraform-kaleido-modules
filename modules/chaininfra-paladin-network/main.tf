@@ -2,15 +2,15 @@ locals {
   stack_name = var.stack_name != null ? var.stack_name : var.network_name
 
   evm_registry = merge(
-    { registryContract = var.registry_mode },
-    var.registry_mode == "existing" ? {
-      existingContract = { address = var.existing_registry_address }
-    } : {},
-    var.registry_mode == "deploy" ? {
+    {
+      registryContract = var.registry_mode
       admin = {
         identity = var.registry_node
         nodeName = var.registry_node
       }
+    },
+    var.registry_mode == "existing" ? {
+      existingContract = { address = var.existing_registry_address }
     } : {},
   )
 }
