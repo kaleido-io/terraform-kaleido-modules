@@ -34,17 +34,23 @@ variable "environment_id" {
 
 variable "contracts_service_id" {
   type        = string
-  description = "ID of the ContractManagerService that holds the contract builds and deploy actions."
+  description = "ID of the ContractManagerService that holds the contract builds."
 }
 
-variable "txnmanager_service_id" {
+variable "connector_service_id" {
   type        = string
   default     = null
-  description = "ID of the TransactionManagerService that submits the factory deploy transaction(s) to the base ledger"
+  description = "ID of the EVMConnector service whose standard API submits the factory deploy transaction(s) to the base ledger. Required when mode = deploy."
   validation {
-    condition     = var.mode != "deploy" || var.txnmanager_service_id != null
-    error_message = "txnmanager_service_id is required when mode = deploy."
+    condition     = var.mode != "deploy" || var.connector_service_id != null
+    error_message = "connector_service_id is required when mode = deploy."
   }
+}
+
+variable "connector_api_name" {
+  type        = string
+  default     = "evm"
+  description = "Name of the EVM standard API deployed on the connector (standard_api_name output of middleware-evm-connector)."
 }
 
 variable "signing_key_address" {
@@ -92,7 +98,7 @@ variable "factory_address" {
 variable "resource_prefix" {
   type        = string
   default     = ""
-  description = "Prefix for ContractManager build / deploy names"
+  description = "Prefix for ContractManager build names. The connector deploys have no name; their identity is an idempotency key derived from the deployment inputs."
 }
 
 variable "build_path" {

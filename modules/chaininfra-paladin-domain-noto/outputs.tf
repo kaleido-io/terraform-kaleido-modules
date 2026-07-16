@@ -1,6 +1,6 @@
 output "factory_address" {
   value       = local.factory_address
-  description = "Address of the ERC1967 proxy noto factory." 
+  description = "Address of the ERC1967 proxy noto factory."
 }
 
 output "domain" {
@@ -8,7 +8,7 @@ output "domain" {
     noto = {
       plugin          = { type = "c-shared", library = "/app/domains/libnoto.so" }
       registryAddress = local.factory_address
-      config = { factoryVersion = 2 }
+      config          = { factoryVersion = 2 }
     }
   }
   description = "Domain config"

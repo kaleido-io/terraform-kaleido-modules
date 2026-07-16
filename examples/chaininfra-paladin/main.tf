@@ -41,7 +41,6 @@ module "block_indexer" {
   source = "../../modules/chaininfra-block-indexer"
 
   environment_id              = local.environment_id
-  network_id                  = module.besu_network.network_id
   stack_id                    = module.besu_network.stack_id
   evm_gateway_service_id      = module.evm_gateway.service_id
   contract_manager_service_id = kaleido_platform_service.cms_0.id
@@ -80,7 +79,7 @@ resource "kaleido_platform_kms_key" "domain_deployer" {
   wallet      = kaleido_platform_kms_wallet.wallet_0.name
 }
 
-# Contract + Transaction Management
+# Contract Management
 
 resource "kaleido_platform_runtime" "cms_0" {
   type        = "ContractManager"
@@ -97,28 +96,47 @@ resource "kaleido_platform_service" "cms_0" {
   config_json = jsonencode({})
 }
 
-resource "kaleido_platform_runtime" "txm_0" {
-  type        = "TransactionManager"
-  name        = "txm"
+
+resource "kaleido_platform_runtime" "wfe_0" {
+  type        = "WorkflowEngine"
+  name        = "flows"
   environment = local.environment_id
   config_json = jsonencode({})
 }
 
-resource "kaleido_platform_service" "txm_0" {
-  type        = "TransactionManager"
-  name        = "txm"
+resource "kaleido_platform_service" "wfe_0" {
+  type        = "WorkflowEngine"
+  name        = "flows"
   environment = local.environment_id
-  runtime     = kaleido_platform_runtime.txm_0.id
-  config_json = jsonencode({
-    keyManager = { id = kaleido_platform_service.kms_0.id }
-    type       = "evm"
-    evm = {
-      confirmations = { required = 0 }
-      connector = {
-        evmGateway = { id = module.evm_gateway.service_id }
-      }
-    }
-  })
+  runtime     = kaleido_platform_runtime.wfe_0.id
+  config_json = jsonencode({})
+}
+
+# EVM Connector
+
+data "kaleido_platform_evm_netinfo" "besu" {
+  environment = local.environment_id
+  service     = module.evm_gateway.service_id
+  depends_on  = [module.besu_node]
+}
+
+module "evm_connector" {
+  source = "../../modules/middleware-evm-connector"
+
+  environment_id         = local.environment_id
+  stack_name             = "evm"
+  connector_name         = "evm-connector"
+  key_manager_service_id = kaleido_platform_service.kms_0.id
+  evm_gateway_service_id = module.evm_gateway.service_id
+
+  ecosystem = { name = "besu", displayName = "Besu" }
+  network = {
+    name        = var.besu_network_name
+    displayName = var.besu_network_name
+    chainId     = tostring(data.kaleido_platform_evm_netinfo.besu.chain_id)
+  }
+
+  depends_on = [kaleido_platform_service.wfe_0]
 }
 
 # Paladin Domains
@@ -126,11 +144,12 @@ resource "kaleido_platform_service" "txm_0" {
 module "noto" {
   source = "../../modules/chaininfra-paladin-domain-noto"
 
-  paladin_repo          = var.paladin_repo
-  paladin_ref           = var.paladin_ref
-  environment_id        = local.environment_id
-  contracts_service_id  = kaleido_platform_service.cms_0.id
-  txnmanager_service_id = kaleido_platform_service.txm_0.id
+  paladin_repo         = var.paladin_repo
+  paladin_ref          = var.paladin_ref
+  environment_id       = local.environment_id
+  contracts_service_id = kaleido_platform_service.cms_0.id
+  connector_service_id = module.evm_connector.service_id
+  connector_api_name   = module.evm_connector.standard_api_name
 
   signing_key_address = var.signing_key_uri != null ? null : coalesce(var.signing_key_address, kaleido_platform_kms_key.domain_deployer.address)
   signing_key_uri     = var.signing_key_uri
@@ -141,16 +160,17 @@ module "noto" {
 module "pente" {
   source = "../../modules/chaininfra-paladin-domain-pente"
 
-  paladin_repo          = var.paladin_repo
-  paladin_ref           = var.paladin_ref
-  environment_id        = local.environment_id
-  contracts_service_id  = kaleido_platform_service.cms_0.id
-  txnmanager_service_id = kaleido_platform_service.txm_0.id
+  paladin_repo         = var.paladin_repo
+  paladin_ref          = var.paladin_ref
+  environment_id       = local.environment_id
+  contracts_service_id = kaleido_platform_service.cms_0.id
+  connector_service_id = module.evm_connector.service_id
+  connector_api_name   = module.evm_connector.standard_api_name
 
   signing_key_address = var.signing_key_uri != null ? null : coalesce(var.signing_key_address, kaleido_platform_kms_key.domain_deployer.address)
   signing_key_uri     = var.signing_key_uri
 
-  # Deploy one domain at a time — both use the same signing key and TransactionManager.
+  # Deploy one domain at a time — both use the same signing key and EVM connector.
   depends_on = [module.noto]
 }
 
@@ -195,7 +215,7 @@ module "paladin_node" {
   hostname         = var.publish_hostnames ? local.node_names[count.index] : null
   network_registry = module.paladin_network.registry
 
-  depends_on = [module.besu_node]
+  depends_on = [module.besu_network, module.besu_node, module.evm_gateway]
 }
 
 # Outputs

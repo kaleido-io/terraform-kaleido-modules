@@ -98,40 +98,41 @@ moved {
   to   = kaleido_platform_cms_build.pente_factory_proxy[0]
 }
 
-# ContractManager deploys
-resource "kaleido_platform_cms_action_deploy" "factory_impl" {
+# EVM connector deploys (idempotent - identity is a key derived from the inputs)
+resource "kaleido_platform_evm_connector_contract_deploy" "factory_impl" {
   count = local.deploy ? 1 : 0
 
-  environment         = var.environment_id
-  service             = var.contracts_service_id
-  build               = kaleido_platform_cms_build.pente_factory[0].id
-  name                = "${var.resource_prefix}deploy_pente_factory"
-  transaction_manager = var.txnmanager_service_id
-  signing_key         = local.signing_identity
+  environment = var.environment_id
+  service     = var.connector_service_id
+  api         = var.connector_api_name
+  key         = local.signing_identity
+  abi         = kaleido_platform_cms_build.pente_factory[0].abi
+  bytecode    = kaleido_platform_cms_build.pente_factory[0].bytecode
 }
 
-resource "kaleido_platform_cms_action_deploy" "factory_proxy" {
+resource "kaleido_platform_evm_connector_contract_deploy" "factory_proxy" {
   count = local.deploy ? 1 : 0
 
-  environment         = var.environment_id
-  service             = var.contracts_service_id
-  build               = kaleido_platform_cms_build.pente_factory_proxy[0].id
-  name                = "${var.resource_prefix}deploy_pente_factory_proxy"
-  transaction_manager = var.txnmanager_service_id
-  signing_key         = local.signing_identity
+  environment = var.environment_id
+  service     = var.connector_service_id
+  api         = var.connector_api_name
+  key         = local.signing_identity
+  abi         = kaleido_platform_cms_build.pente_factory_proxy[0].abi
+  bytecode    = kaleido_platform_cms_build.pente_factory_proxy[0].bytecode
 
-  # ERC1967Proxy constructor args: (implementation, initializer calldata).
-  # PenteFactory's initializer takes no arguments, so the calldata is just the
-  # selector (default 0x8129fc1c = initialize()), delegatecalled by the proxy
-  # at deploy time.
-  params_json = jsonencode([
-    kaleido_platform_cms_action_deploy.factory_impl[0].contract_address,
-    var.factory_initializer_selector
-  ])
+  # ERC1967Proxy constructor args, keyed by input name (the connector's deploy
+  # operation requires params as an object): implementation + initializer
+  # calldata. PenteFactory's initializer takes no arguments, so the calldata is
+  # just the selector (default 0x8129fc1c = initialize()), delegatecalled by
+  # the proxy at deploy time.
+  params_json = jsonencode({
+    implementation = kaleido_platform_evm_connector_contract_deploy.factory_impl[0].contract_address
+    _data          = var.factory_initializer_selector
+  })
 }
 
 locals {
   factory_address = !local.deploy ? var.existing_factory_address : try(
-    kaleido_platform_cms_action_deploy.factory_proxy[0].contract_address, null
+    kaleido_platform_evm_connector_contract_deploy.factory_proxy[0].contract_address, null
   )
 }
