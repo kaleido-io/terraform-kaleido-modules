@@ -1,0 +1,29 @@
+output "service_id" {
+  value       = kaleido_platform_service.this.id
+  description = "ID of the PaladinNodeService."
+}
+
+output "runtime_id" {
+  value       = kaleido_platform_runtime.this.id
+  description = "ID of the PaladinNodeRuntime."
+}
+
+output "node_name" {
+  value       = kaleido_platform_service.this.name
+  description = "Display name of the Paladin node runtime and service."
+}
+
+output "endpoints" {
+  value       = kaleido_platform_service.this.endpoints
+  description = "Map of the node's published endpoints (jsonrpc, jsonrpcws, ...)."
+}
+
+output "hostnames" {
+  value       = kaleido_platform_service.this.hostnames
+  description = "Map of the node's hostnames."
+}
+
+output "registry_address" {
+  value       = local.is_registry_node ? data.kaleido_platform_paladin_evm_registry.this[0].address : null
+  description = "Address of the network's EVM registry contract. Set on the registry node in deploy mode; null on all other nodes."
+}
