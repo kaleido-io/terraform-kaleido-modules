@@ -215,6 +215,18 @@ module "btc" {
   monitoring             = var.btc_monitoring
 }
 
+## Web3 middleware: HTTP connector
+
+module "http_connector" {
+  count          = var.http_url != null ? 1 : 0
+  source         = "../../modules/middleware-http-connector"
+  environment_id = kaleido_platform_environment.env_0.id
+  connector_name = "http-connector"
+  url            = var.http_url
+  backend_auth   = var.http_backend_auth
+  depends_on     = [kaleido_platform_service.workflow_engine_service]
+}
+
 ## Digital assets: tokenization stack
 
 resource "kaleido_platform_stack" "tokenization_stack" {
