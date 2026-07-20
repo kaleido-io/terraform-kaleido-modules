@@ -165,6 +165,74 @@ variable "gas_pricing" {
   description = "evm.gasPricing — format (eip1559|legacy), source (tagged union: fixedGasPrice | gasOracleAPI | RPCEndpoint), auto-increment, and caps."
 }
 
+variable "gas_pricing_profiles" {
+  type = map(object({
+    format = optional(object({
+      name                 = optional(string)
+      enableLegacyFallback = optional(bool)
+    }))
+    source = optional(object({
+      fixedGasPrice = optional(object({
+        enabled              = optional(bool)
+        maxFeePerGas         = optional(string)
+        maxPriorityFeePerGas = optional(string)
+        gasPrice             = optional(string)
+      }))
+      gasOracleAPI = optional(object({
+        enabled                   = optional(bool)
+        enableRPCEndpointFallback = optional(bool)
+        url                       = optional(string)
+        method                    = optional(string)
+        body                      = optional(string)
+        bodyEncoding              = optional(string)
+        httpHeaders               = optional(map(string))
+        responseTemplate = optional(object({
+          jsonata = optional(string)
+        }))
+        cache = optional(object({
+          enabled = optional(bool)
+          size    = optional(string)
+          ttl     = optional(string)
+        }))
+      }))
+      RPCEndpoint = optional(object({
+        cache = optional(object({
+          enabled = optional(bool)
+          size    = optional(string)
+          ttl     = optional(string)
+        }))
+        ethFeeHistory = optional(object({
+          baseFeeBufferFactor   = optional(number)
+          historyBlockCount     = optional(number)
+          priorityFeePercentile = optional(number)
+        }))
+      }))
+    }))
+    autoIncrement = optional(object({
+      enabled              = optional(bool)
+      maxFeePerGas         = optional(object({ multiplier = optional(number) }))
+      maxPriorityFeePerGas = optional(object({ multiplier = optional(number) }))
+      gasPrice             = optional(object({ multiplier = optional(number) }))
+    }))
+    caps = optional(object({
+      enabled              = optional(bool)
+      maxFeePerGas         = optional(number)
+      maxPriorityFeePerGas = optional(number)
+      gasPrice             = optional(number)
+    }))
+  }))
+  default     = {}
+  description = "Additional named evm.gasPricing profiles for dynamic selection. Keys become the profile name suffix (e.g. \"high\" → \"evm.gasPricing_high\"). Use with gas_pricing_dynamic_mapping to route transactions to the correct profile at submission time."
+}
+
+variable "gas_pricing_dynamic_mapping" {
+  type = object({
+    jsonata = string
+  })
+  default     = null
+  description = "When set, configures a dynamic JSONata mapping on the evm.gasPricing binding of the submission flow. The expression is evaluated against the transaction state to select a profile name; the connector service ID is automatically used as the name prefix. Requires at least one entry in gas_pricing_profiles."
+}
+
 variable "nonce_assignment" {
   type = object({
     previousTxnsCondition = optional(string)

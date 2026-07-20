@@ -40,3 +40,8 @@ output "config_profiles" {
   value       = { for k, v in kaleido_platform_connector_config_profile.this : k => v.id }
   description = "Map of config-type name to deployed config profile ID."
 }
+
+output "gas_pricing_profile_names" {
+  value       = { for k, v in kaleido_platform_connector_config_profile.gas_pricing : k => v.name }
+  description = "Map of named gas pricing profile key (e.g. \"evm.gasPricing_high\") to its profile name, for use in JSONata expressions."
+}

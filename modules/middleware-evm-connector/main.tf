@@ -76,6 +76,11 @@ locals {
     "evm.transactionEventsConfig"  = var.transaction_events
     "evm.contractEventListener"    = var.contract_event_listener
   }
+
+  # Named gas pricing profiles keyed as "evm.gasPricing_<name>" (e.g. "evm.gasPricing_high").
+  named_gas_pricing_profiles = {
+    for k, v in var.gas_pricing_profiles : "evm.gasPricing_${k}" => v
+  }
 }
 
 resource "kaleido_platform_connector_config_type" "this" {
@@ -93,6 +98,18 @@ resource "kaleido_platform_connector_config_profile" "this" {
   service     = kaleido_platform_service.this.id
   name        = each.key
   config_type = each.key
+  value_json  = jsonencode(each.value)
+  depends_on  = [kaleido_platform_connector_config_type.this]
+}
+
+# ─── Additional named gas pricing profiles ────────────────────────────────────
+
+resource "kaleido_platform_connector_config_profile" "gas_pricing" {
+  for_each    = local.named_gas_pricing_profiles
+  environment = var.environment_id
+  service     = kaleido_platform_service.this.id
+  name        = each.key
+  config_type = "evm.gasPricing"
   value_json  = jsonencode(each.value)
   depends_on  = [kaleido_platform_connector_config_type.this]
 }
@@ -117,6 +134,21 @@ resource "kaleido_platform_connector_flow" "query" {
   environment = var.environment_id
   service     = kaleido_platform_service.this.id
   name        = "query"
+}
+
+# ─── Dynamic gas pricing binding (optional) ───────────────────────────────────
+
+resource "kaleido_platform_connector_flow_config_binding" "gas_pricing" {
+  count       = var.gas_pricing_dynamic_mapping != null ? 1 : 0
+  environment = var.environment_id
+  service     = kaleido_platform_service.this.id
+  flow        = kaleido_platform_connector_flow.submission.name
+  config_type = "evm.gasPricing"
+  dynamic_mapping = {
+    name_prefix = "${kaleido_platform_service.this.id}/"
+    jsonata     = var.gas_pricing_dynamic_mapping.jsonata
+  }
+  depends_on = [kaleido_platform_connector_config_profile.gas_pricing]
 }
 
 # ─── Stream factories ─────────────────────────────────────────────────────────
