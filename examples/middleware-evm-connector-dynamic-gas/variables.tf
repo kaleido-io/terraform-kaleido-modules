@@ -36,7 +36,8 @@ variable "key_manager_name" {
 
 variable "jsonrpc_url" {
   type        = string
-  description = "JSON-RPC endpoint URL of the EVM network (e.g. a public Sepolia RPC)."
+  default     = null
+  description = "JSON-RPC endpoint URL of the EVM network (e.g. a public Sepolia RPC). Mutually exclusive with evm_gateway_service_id."
 }
 
 variable "jsonrpc_auth" {
@@ -47,4 +48,10 @@ variable "jsonrpc_auth" {
   default     = null
   description = "Optional basic-auth credentials for the JSON-RPC endpoint."
   sensitive   = true
+}
+
+variable "evm_gateway_service_id" {
+  type        = string
+  default     = null
+  description = "ID of an existing Kaleido EVM gateway service. Mutually exclusive with jsonrpc_url."
 }

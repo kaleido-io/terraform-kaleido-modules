@@ -38,8 +38,9 @@ module "evm_connector" {
     chainId     = "11155111"
   }
 
-  jsonrpc_url  = var.jsonrpc_url
-  jsonrpc_auth = var.jsonrpc_auth
+  jsonrpc_url            = var.jsonrpc_url
+  jsonrpc_auth           = var.jsonrpc_auth
+  evm_gateway_service_id = var.evm_gateway_service_id
 
   # Default profile — used when no configProfileName is supplied in the transaction.
   gas_pricing = {
