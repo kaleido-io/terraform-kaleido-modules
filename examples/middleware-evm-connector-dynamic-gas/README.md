@@ -1,20 +1,35 @@
 # EVM Connector with dynamic gas pricing
 
 This example deploys an EVM Connector against a public EVM network (Ethereum Sepolia) and
-configures **dynamic gas pricing profile selection**: multiple named gas pricing profiles are
-created and a JSONata expression on the connector's submission flow binding selects the right
-profile at transaction submission time based on the caller's request.
+demonstrates **two ways to bind a config profile to a submission flow slot**:
+
+- **Static binding by ID** — the nonce assignment profile is created with a specific setting
+  (`requireSubmitted`) and bound to the submission flow using its config profile ID.
+- **Dynamic binding via JSONata** — three gas pricing profiles are created and a JSONata
+  expression on the submission flow's `gasPricing` slot selects the right profile at
+  transaction submission time based on the caller's request.
 
 ## How it works
 
+### Static binding — nonce assignment
+
+The `nonce_assignment` profile is created with `previousTxnsCondition = "requireSubmitted"`,
+which requires a transaction to reach the mempool before the next nonce is assigned. The module
+binds this profile to the submission flow's `evm.nonceAssignment` slot by config profile ID using
+a `kaleido_platform_connector_flow_config_binding` resource with `config_profile_id`. All other
+standard profiles (confirmations, gas estimation, submission, transaction serialisation) are bound
+the same way.
+
+### Dynamic binding — gas pricing
+
 1. Three `evm.gasPricing` config profiles are deployed on the connector service:
-   - `evm.gasPricing` — the default, used when no profile is specified
+   - `evm.gasPricing` — the default, used when no profile name is specified
    - `evm.gasPricing_low` — conservative settings (lower percentile, larger history window, small buffer)
    - `evm.gasPricing_high` — aggressive settings (higher percentile, shorter history window, larger buffer)
 
 2. A `kaleido_platform_connector_flow_config_binding` resource patches the submission flow's
-   `gasPricing` config-profile slot with a `dynamicMapping`. At submission time the connector
-   evaluates the JSONata expression against the transaction state to resolve the profile name.
+   `gasPricing` slot with a `dynamic_mapping`. At submission time the connector evaluates the
+   JSONata expression against the transaction state to resolve the profile name.
 
 3. Callers select a profile by passing `options.gasPricing.configProfileName` in the transaction
    request body (e.g. `"evm.gasPricing_high"`). Transactions that omit the option fall back to
@@ -24,7 +39,7 @@ profile at transaction submission time based on the caller's request.
 
 | Module | Role |
 |--------|------|
-| [`middleware-evm-connector`](../../modules/middleware-evm-connector) | Deploys the EVM Connector stack, named gas pricing profiles, and the dynamic binding on the submission flow |
+| [`middleware-evm-connector`](../../modules/middleware-evm-connector) | Deploys the EVM Connector stack, config profiles, and all submission flow bindings (static and dynamic) |
 
 ## Additional resources
 
@@ -49,6 +64,7 @@ profile at transaction submission time based on the caller's request.
 | `environment_name` | `evm-dynamic-gas` | Name of the environment to create |
 | `key_manager_name` | `keys` | Name of the KeyManager runtime and service |
 | `jsonrpc_auth` | `null` | Basic-auth credentials for the JSON-RPC endpoint |
+| `evm_gateway_service_id` | `null` | ID of an existing Kaleido EVM gateway service (alternative to `jsonrpc_url`) |
 
 ## Usage
 
@@ -78,7 +94,7 @@ transaction submission request:
 ```json
 {
   "idempotencyKey": "my-tx-1",
-  "input": { ... },
+  "input": { "..." : "..." },
   "options": {
     "gasPricing": {
       "configProfileName": "evm.gasPricing_high"

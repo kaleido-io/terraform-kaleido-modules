@@ -42,25 +42,36 @@ module "evm_connector" {
   jsonrpc_auth           = var.jsonrpc_auth
   evm_gateway_service_id = var.evm_gateway_service_id
 
-  # Default profile — used when no configProfileName is supplied in the transaction.
-  gas_pricing = {
-    format = { name = "eip1559", enableLegacyFallback = true }
-    source = {
-      RPCEndpoint = {
-        ethFeeHistory = {
-          priorityFeePercentile = 60
-          historyBlockCount     = 10
-          baseFeeBufferFactor   = 1.15
-        }
-      }
-    }
+  # Nonce assignment — bound to the submission flow by config profile ID.
+  # requireSubmitted ensures a transaction reaches the mempool before the next
+  # nonce is assigned, preventing gaps from stale in-flight transactions.
+  nonce_assignment = {
+    previousTxnsCondition = "requireSubmitted"
   }
 
-  # Named profiles — each becomes a config profile named "evm.gasPricing_<key>".
+  # Dynamic gas pricing — set gas_pricing = null so the module uses dynamic_mapping
+  # instead of a static binding. All named profiles (including the fallback) are
+  # supplied via gas_pricing_profiles with their full profile names as keys.
+  gas_pricing = null
+
+  # Named profiles for dynamic selection. Keys are full profile names.
   # Callers select a profile by passing options.gasPricing.configProfileName in
   # the transaction request (e.g. "evm.gasPricing_high").
   gas_pricing_profiles = {
-    low = {
+    # Fallback — used when no configProfileName is supplied in the transaction.
+    "evm.gasPricing" = {
+      format = { name = "eip1559", enableLegacyFallback = true }
+      source = {
+        RPCEndpoint = {
+          ethFeeHistory = {
+            priorityFeePercentile = 60
+            historyBlockCount     = 10
+            baseFeeBufferFactor   = 1.15
+          }
+        }
+      }
+    }
+    "evm.gasPricing_low" = {
       format = { name = "eip1559", enableLegacyFallback = true }
       source = {
         RPCEndpoint = {
@@ -72,7 +83,7 @@ module "evm_connector" {
         }
       }
     }
-    high = {
+    "evm.gasPricing_high" = {
       format = { name = "eip1559", enableLegacyFallback = true }
       source = {
         RPCEndpoint = {
@@ -99,7 +110,7 @@ module "evm_connector" {
 
 # ─── Outputs ──────────────────────────────────────────────────────────────────
 
-output "gas_pricing_profile_names" {
-  value       = module.evm_connector.gas_pricing_profile_names
-  description = "Named gas pricing profiles available for dynamic selection."
+output "named_profile_names" {
+  value       = module.evm_connector.named_profile_names
+  description = "Named profiles available for dynamic selection."
 }
