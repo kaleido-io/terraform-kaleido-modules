@@ -158,6 +158,28 @@ resource "kaleido_platform_connector_flow" "submission" {
   environment = var.environment_id
   service     = kaleido_platform_service.this.id
   name        = "submission"
+
+  # The API requires all 6 submission config types to have a binding at deploy
+  # time — omitting config_type_bindings leaves no slots and the deploy fails.
+  # Static types use their computed profile name. Dynamic types use the first
+  # named profile (sorted by key) as a placeholder; the submission_dynamic
+  # binding resource immediately PATCHes it to a dynamic_mapping after deploy.
+  config_type_bindings = {
+    for config_type in [
+      "evm.confirmations", "evm.gasEstimation", "evm.gasPricing",
+      "evm.nonceAssignment", "evm.submission", "evm.transactionSerialization",
+    ] :
+    config_type => contains(keys(local.standard_profiles), config_type)
+      ? local.standard_profiles[config_type].profile_name
+      : sort([for k, v in local.all_named_profiles : v.profile_name if v.config_type == config_type])[0]
+  }
+
+  # Profile names are derived from variables (plan-time known), but the API
+  # validates that the named profiles exist — wait for both profile resources.
+  depends_on = [
+    kaleido_platform_connector_config_profile.this,
+    kaleido_platform_connector_config_profile.named,
+  ]
 }
 
 resource "kaleido_platform_connector_flow" "query" {
