@@ -106,11 +106,14 @@ locals {
     "evm.transactionSerialization" = var.transaction_serialization_dynamic_mapping
   }
 
-  # Static bindings: submission-flow types where the standard profile exists AND no dynamic mapping.
+  # Static bindings: iterate over submission-flow types only (keys of dynamic_mappings),
+  # then include types that have a standard profile AND no dynamic mapping set.
+  # Iterating over dynamic_mappings keys avoids index errors for non-submission types
+  # (blockEventsConfig etc.) that are in standard_profiles but not in dynamic_mappings.
   submission_static_bindings = {
-    for config_type, profile_info in local.standard_profiles :
+    for config_type in keys(local.dynamic_mappings) :
     config_type => kaleido_platform_connector_config_profile.this[config_type].id
-    if try(local.dynamic_mappings[config_type], null) == null
+    if contains(keys(local.standard_profiles), config_type) && local.dynamic_mappings[config_type] == null
   }
 
   # Dynamic bindings: submission-flow types where a dynamic mapping is configured.

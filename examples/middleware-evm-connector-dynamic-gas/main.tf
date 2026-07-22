@@ -42,10 +42,16 @@ module "evm_connector" {
   jsonrpc_auth           = var.jsonrpc_auth
   evm_gateway_service_id = var.evm_gateway_service_id
 
-  # Nonce assignment — bound to the submission flow by config profile ID.
+  # Nonce assignment — static binding by config profile ID.
+  # The optional `name` field gives the profile a custom name; omitting it
+  # defaults to the config type name ("evm.nonceAssignment"). Either way the
+  # module creates a kaleido_platform_connector_config_profile resource and
+  # binds it to the submission flow via kaleido_platform_connector_flow_config_binding
+  # using the profile's ID.
   # requireSubmitted ensures a transaction reaches the mempool before the next
   # nonce is assigned, preventing gaps from stale in-flight transactions.
   nonce_assignment = {
+    name                  = "my_nonce_assignment"
     previousTxnsCondition = "requireSubmitted"
   }
 
