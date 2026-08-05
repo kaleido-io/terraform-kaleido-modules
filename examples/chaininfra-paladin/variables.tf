@@ -20,7 +20,7 @@ variable "environment_id" {
 variable "environment_name" {
   type        = string
   description = "Name for the environment to create. Only used when `environment_id` is empty."
-  default     = ""
+  default     = "paladin"
 }
 
 # ─── Paladin network configuration ──────────────────────────────────────────────

@@ -1,0 +1,6 @@
+kaleido_platform_api = "<your-kaleido-platform-api>"
+kaleido_platform_username = "<your-kaleido-platform-username>"
+kaleido_platform_password = "<your-kaleido-platform-password>"
+
+# Set environment_id to deploy into an existing environment instead of creating one
+# environment_id = "<your-environment-id>"
