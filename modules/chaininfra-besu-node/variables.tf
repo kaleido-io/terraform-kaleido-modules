@@ -126,6 +126,12 @@ variable "gas_price" {
   description = "besu-node-service-config.gasPrice — gas price for transactions."
 }
 
+variable "allow_non_zero_gas_fees" {
+  type        = bool
+  default     = null
+  description = "besu-node-service-config.allowNonZeroGasFees — whether transactions with a non-zero gas price are accepted. Omitted when null; the platform treats an absent value as false."
+}
+
 variable "genesis_json" {
   type        = string
   default     = null

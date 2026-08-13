@@ -30,6 +30,7 @@ chain-infrastructure stack and Besu network.
 | `custom_besu_args` | `["--revert-reason-enabled"]` | Extra Besu command-line arguments |
 | `target_gas_limit` | `null` | Per-transaction gas limit cap; `null` uses the platform default |
 | `gas_price` | `"0"` | Gas price for transactions |
+| `allow_non_zero_gas_fees` | `false` (unset) | Whether transactions with a non-zero gas price are accepted; left unset the setting is omitted and the platform treats it as `false` |
 | `genesis_json` | `null` | Node-specific genesis override for externally managed networks |
 | `node_key` | `null` | secp256k1 private key for the node identity; platform-generated when unset (sensitive) |
 
