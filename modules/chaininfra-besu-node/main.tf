@@ -14,6 +14,8 @@ locals {
       gasPrice          = var.gas_price
     },
     var.target_gas_limit != null ? { targetGasLimit = var.target_gas_limit } : {},
+    # Sent only when explicitly set — the platform treats an absent value as false.
+    var.allow_non_zero_gas_fees != null ? { allowNonZeroGasFees = var.allow_non_zero_gas_fees } : {},
     # A genesis supplied inline is stored as the `genesis` file set and referenced by name.
     var.genesis_json != null ? { genesis = { fileSetRef = "genesis" } } : {},
     # A user-provided node key is stored as the `nodeKey` cred set and referenced by name.
