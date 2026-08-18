@@ -75,7 +75,16 @@ Drop-in `*.tfvars` files under `examples/`:
 | `stack_id` | ID of the `EVMConnectorStack` |
 | `runtime_id` | ID of the `EVMConnector` runtime |
 | `submission_flow_name` | Name of the deployed submission connector flow |
+| `submission_flow_id` | ID of the deployed submission connector flow |
 | `query_flow_name` | Name of the deployed query connector flow |
+| `query_flow_id` | ID of the deployed query connector flow |
+| `flow_ids` | Map of connector flow name to deployed flow ID (`submission`, `query`) |
 | `standard_api_name` | Name of the deployed EVM standard API |
+| `standard_api_id` | ID of the deployed EVM standard API |
 | `stream_factories` | Map of deployed stream factory IDs (`block_events`, `transaction_events`) |
 | `config_profiles` | Map of config-type name to deployed config profile ID |
+
+The flow IDs exist because workflow **subflow bindings take an ID, not a name**
+(`subflowBindings: { <subflow>: { subflowId: "flw:..." } }`). Without them a
+caller cannot bind its own `kaleido_platform_wfe_workflow` to the connector's
+flows, since Terraform forbids referencing a module's internal resources.
