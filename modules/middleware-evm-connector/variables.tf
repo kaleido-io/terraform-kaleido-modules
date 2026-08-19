@@ -86,6 +86,7 @@ variable "network" {
 
 variable "confirmations" {
   type = object({
+    name  = optional(string)
     count = optional(number, 0)
     resubmission = optional(object({
       enabled = optional(bool, false)
@@ -96,16 +97,54 @@ variable "confirmations" {
   description = "evm.confirmations — number of confirmations before a transaction is considered final, plus optional resubmission policy."
 }
 
+variable "confirmations_profiles" {
+  type = map(object({
+    count = optional(number, 0)
+    resubmission = optional(object({
+      enabled = optional(bool, false)
+      timeout = optional(string, "5m")
+    }))
+  }))
+  default     = {}
+  description = "Additional named evm.confirmations profiles for dynamic selection. Keys are the full profile names (e.g. \"evm.confirmations_strict\")."
+}
+
+variable "confirmations_dynamic_mapping" {
+  type = object({
+    jsonata = string
+  })
+  default     = null
+  description = "When set, configures a dynamic JSONata mapping on the evm.confirmations binding of the submission flow. Set confirmations = null when using this variable — they are mutually exclusive."
+}
+
 variable "gas_estimation" {
   type = object({
+    name        = optional(string)
     scaleFactor = optional(number, 1.0)
   })
   default     = {}
   description = "evm.gasEstimation"
 }
 
+variable "gas_estimation_profiles" {
+  type = map(object({
+    scaleFactor = optional(number, 1.0)
+  }))
+  default     = {}
+  description = "Additional named evm.gasEstimation profiles for dynamic selection. Keys are the full profile names."
+}
+
+variable "gas_estimation_dynamic_mapping" {
+  type = object({
+    jsonata = string
+  })
+  default     = null
+  description = "When set, configures a dynamic JSONata mapping on the evm.gasEstimation binding of the submission flow. Set gas_estimation = null when using this variable — they are mutually exclusive."
+}
+
 variable "gas_pricing" {
   type = object({
+    name   = optional(string)
     format = optional(object({
       name                 = optional(string)
       enableLegacyFallback = optional(bool)
@@ -165,16 +204,102 @@ variable "gas_pricing" {
   description = "evm.gasPricing — format (eip1559|legacy), source (tagged union: fixedGasPrice | gasOracleAPI | RPCEndpoint), auto-increment, and caps."
 }
 
+variable "gas_pricing_profiles" {
+  type = map(object({
+    format = optional(object({
+      name                 = optional(string)
+      enableLegacyFallback = optional(bool)
+    }))
+    source = optional(object({
+      fixedGasPrice = optional(object({
+        enabled              = optional(bool)
+        maxFeePerGas         = optional(string)
+        maxPriorityFeePerGas = optional(string)
+        gasPrice             = optional(string)
+      }))
+      gasOracleAPI = optional(object({
+        enabled                   = optional(bool)
+        enableRPCEndpointFallback = optional(bool)
+        url                       = optional(string)
+        method                    = optional(string)
+        body                      = optional(string)
+        bodyEncoding              = optional(string)
+        httpHeaders               = optional(map(string))
+        responseTemplate = optional(object({
+          jsonata = optional(string)
+        }))
+        cache = optional(object({
+          enabled = optional(bool)
+          size    = optional(string)
+          ttl     = optional(string)
+        }))
+      }))
+      RPCEndpoint = optional(object({
+        cache = optional(object({
+          enabled = optional(bool)
+          size    = optional(string)
+          ttl     = optional(string)
+        }))
+        ethFeeHistory = optional(object({
+          baseFeeBufferFactor   = optional(number)
+          historyBlockCount     = optional(number)
+          priorityFeePercentile = optional(number)
+        }))
+      }))
+    }))
+    autoIncrement = optional(object({
+      enabled              = optional(bool)
+      maxFeePerGas         = optional(object({ multiplier = optional(number) }))
+      maxPriorityFeePerGas = optional(object({ multiplier = optional(number) }))
+      gasPrice             = optional(object({ multiplier = optional(number) }))
+    }))
+    caps = optional(object({
+      enabled              = optional(bool)
+      maxFeePerGas         = optional(number)
+      maxPriorityFeePerGas = optional(number)
+      gasPrice             = optional(number)
+    }))
+  }))
+  default     = {}
+  description = "Additional named evm.gasPricing profiles for dynamic selection. Keys are the full profile names (e.g. \"evm.gasPricing_high\"). Use with gas_pricing_dynamic_mapping to route transactions to the correct profile at submission time."
+}
+
+variable "gas_pricing_dynamic_mapping" {
+  type = object({
+    jsonata = string
+  })
+  default     = null
+  description = "When set, configures a dynamic JSONata mapping on the evm.gasPricing binding of the submission flow. The expression is evaluated against the transaction state to select a profile name; the connector service ID is automatically used as the name prefix. Requires at least one entry in gas_pricing_profiles."
+}
+
 variable "nonce_assignment" {
   type = object({
+    name                  = optional(string)
     previousTxnsCondition = optional(string)
   })
   default     = {}
   description = "evm.nonceAssignment"
 }
 
+variable "nonce_assignment_profiles" {
+  type = map(object({
+    previousTxnsCondition = optional(string)
+  }))
+  default     = {}
+  description = "Additional named evm.nonceAssignment profiles for dynamic selection. Keys are the full profile names."
+}
+
+variable "nonce_assignment_dynamic_mapping" {
+  type = object({
+    jsonata = string
+  })
+  default     = null
+  description = "When set, configures a dynamic JSONata mapping on the evm.nonceAssignment binding of the submission flow. Set nonce_assignment = null when using this variable — they are mutually exclusive."
+}
+
 variable "submission" {
   type = object({
+    name = optional(string)
     # Keys are submission-error categories (gas_limit_error, gas_price_error, signature_error, …)
     # — the schema is open, so users may add their own categories.
     errorTypeMatchers = optional(map(object({
@@ -186,12 +311,48 @@ variable "submission" {
   description = "evm.submission — error-type matchers keyed by submission error category."
 }
 
+variable "submission_profiles" {
+  type = map(object({
+    errorTypeMatchers = optional(map(object({
+      containsIgnoreCase = optional(list(string))
+      minInterval        = optional(string)
+    })))
+  }))
+  default     = {}
+  description = "Additional named evm.submission profiles for dynamic selection. Keys are the full profile names."
+}
+
+variable "submission_dynamic_mapping" {
+  type = object({
+    jsonata = string
+  })
+  default     = null
+  description = "When set, configures a dynamic JSONata mapping on the evm.submission binding of the submission flow. Set submission = null when using this variable — they are mutually exclusive."
+}
+
 variable "transaction_serialization" {
   type = object({
+    name              = optional(string)
     useOriginalFormat = optional(bool, false)
   })
   default     = {}
   description = "evm.transactionSerialization"
+}
+
+variable "transaction_serialization_profiles" {
+  type = map(object({
+    useOriginalFormat = optional(bool, false)
+  }))
+  default     = {}
+  description = "Additional named evm.transactionSerialization profiles for dynamic selection. Keys are the full profile names."
+}
+
+variable "transaction_serialization_dynamic_mapping" {
+  type = object({
+    jsonata = string
+  })
+  default     = null
+  description = "When set, configures a dynamic JSONata mapping on the evm.transactionSerialization binding of the submission flow. Set transaction_serialization = null when using this variable — they are mutually exclusive."
 }
 
 variable "block_events" {
