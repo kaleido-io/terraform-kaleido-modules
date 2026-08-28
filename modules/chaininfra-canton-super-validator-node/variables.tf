@@ -70,12 +70,6 @@ variable "kms_wallet_name" {
   description = "Name of the KMS wallet the node uses for encryption."
 }
 
-variable "kms_wallet_folder" {
-  type        = string
-  default     = null
-  description = "Folder under the KMS wallet the node uses for encryption. Null uses the platform default."
-}
-
 variable "kms_key_spec" {
   type        = string
   default     = "secp256r1"
