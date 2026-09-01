@@ -202,7 +202,8 @@ locals {
     local.has_oauth_jwt_key ? {
       "oauth-jwt" = {
         files = {
-          "signing.key" = { type = "application/x-pem-file", data = { text = var.oauth.jwt.private_key_pem } }
+          # The connector validates the signing key as a "pem"-typed file (KA040212 otherwise).
+          "signing.key" = { type = "pem", data = { text = var.oauth.jwt.private_key_pem } }
         }
       }
     } : {},
