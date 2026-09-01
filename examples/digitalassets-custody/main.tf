@@ -217,6 +217,32 @@ module "btc" {
 
 ## Web3 middleware: HTTP connector
 
+# RSA signing key for the private_key_jwt OAuth grant. Generated in Terraform so the
+# private half is created and stored without leaving the apply; only the PUBLIC half
+# (see outputs.tf: http_connector_oauth_public_key_pem) is registered with the IdP.
+# Created only when http_oauth requests the private_key_jwt grant.
+resource "tls_private_key" "http_oauth_signing" {
+  count     = try(var.http_oauth.authType, null) == "private_key_jwt" ? 1 : 0
+  algorithm = "RSA"
+  rsa_bits  = 2048
+}
+
+locals {
+  # For private_key_jwt, inject the generated RSA private key PEM into oauth.jwt.private_key_pem.
+  # For every other grant, pass http_oauth through unchanged.
+  http_oauth_effective = var.http_oauth == null ? null : (
+    try(var.http_oauth.authType, null) != "private_key_jwt" ? var.http_oauth : merge(
+      var.http_oauth,
+      {
+        jwt = merge(
+          var.http_oauth.jwt == null ? {} : var.http_oauth.jwt,
+          { private_key_pem = tls_private_key.http_oauth_signing[0].private_key_pem },
+        )
+      },
+    )
+  )
+}
+
 module "http_connector" {
   count          = var.http_url != null ? 1 : 0
   source         = "../../modules/middleware-http-connector"
@@ -224,6 +250,7 @@ module "http_connector" {
   connector_name = "http-connector"
   url            = var.http_url
   backend_auth   = var.http_backend_auth
+  oauth          = local.http_oauth_effective
   depends_on     = [kaleido_platform_service.workflow_engine_service]
 }
 
