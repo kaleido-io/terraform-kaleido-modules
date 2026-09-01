@@ -23,7 +23,6 @@ that runs the sequencer and mediator for a synchronizer network.
 | `subzone` | `null` | Subzone within the zone; `null` lets the scheduler choose |
 | `storage_type` | `null` | Persistent-volume storage class; `null` uses the platform default |
 | `storage_size` | `null` | Persistent-volume size in GB; `null` uses the platform default |
-| `kms_wallet_folder` | `null` | Subfolder under the KMS wallet for this node's keys; defaults to `node_name` when unset |
 | `kms_key_spec` | `secp256r1` | Curve for node keys (`secp256r1` or `secp256k1`) |
 | `hostname_prefix` | `synchronizer` | Prefix for custom hostnames; publishes `sequencer`, `sequencer-admin`, and `mediator` endpoints |
 

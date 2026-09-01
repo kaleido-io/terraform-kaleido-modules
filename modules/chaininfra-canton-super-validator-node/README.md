@@ -25,7 +25,6 @@ governance operations on a `Sandbox` validator network.
 | `subzone` | `null` | Subzone within the zone; `null` lets the scheduler choose |
 | `storage_type` | `null` | Persistent-volume storage class; `null` uses the platform default |
 | `storage_size` | `null` | Persistent-volume size in GB; `null` uses the platform default |
-| `kms_wallet_folder` | `null` | Subfolder under the KMS wallet for this node's keys; defaults to `node_name` when unset |
 | `kms_key_spec` | `secp256r1` | Curve for node keys (`secp256r1` or `secp256k1`) |
 | `node_key` | `null` | Base64-encoded secp256r1 private key for the node identity; platform-generated when unset |
 | `hostname_prefix` | `super-validator` | Prefix for custom hostnames; publishes `ledger` and `admin` endpoints |

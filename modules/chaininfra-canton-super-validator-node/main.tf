@@ -2,7 +2,6 @@
 
 locals {
   node_name       = var.node_name != null ? var.node_name : "sv-${var.default_party}"
-  folder          = var.kms_wallet_folder != null ? var.kms_wallet_folder : local.node_name
   hostname_prefix = var.hostname_prefix != null ? var.hostname_prefix : local.node_name
 
   config = merge(
@@ -12,7 +11,6 @@ locals {
       kms = {
         keyManager = { id = var.kms_id }
         wallet     = var.kms_wallet_name
-        folder     = local.folder
         keySpec    = var.kms_key_spec
       }
     },
@@ -70,7 +68,7 @@ resource "kaleido_platform_hostname" "admin" {
 }
 
 resource "kaleido_platform_hostname" "http" {
-  name        = "${local.hostname_prefix}-http"
+  name        = local.hostname_prefix
   environment = var.environment_id
   service     = kaleido_platform_service.this.id
   hostname    = local.hostname_prefix

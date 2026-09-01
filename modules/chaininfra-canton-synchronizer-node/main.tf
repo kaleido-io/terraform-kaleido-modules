@@ -1,9 +1,5 @@
 # --- Canton Synchronizer Node ───────────────────────────────────────────────────────────────────
 
-locals {
-  folder = var.kms_wallet_folder != null ? var.kms_wallet_folder : var.node_name
-}
-
 resource "kaleido_platform_runtime" "this" {
   type        = "CantonSynchronizerNode"
   name        = var.node_name
@@ -32,7 +28,6 @@ resource "kaleido_platform_service" "this" {
         id = var.kms_id
       }
       wallet = var.kms_wallet_name
-      folder = local.folder
       keySpec = var.kms_key_spec
     }
   })

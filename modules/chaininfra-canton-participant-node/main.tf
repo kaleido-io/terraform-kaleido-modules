@@ -84,7 +84,7 @@ resource "kaleido_platform_hostname" "admin" {
 }
 
 resource "kaleido_platform_hostname" "http" {
-  name        = "${local.hostname_prefix}-http"
+  name        = local.hostname_prefix
   environment = var.environment_id
   service     = kaleido_platform_service.this.id
   hostname    = local.hostname_prefix
