@@ -118,6 +118,38 @@ variable "http_backend_auth" {
   description = "Optional HTTP basic-auth credentials for the HTTP connector backend."
 }
 
+variable "http_oauth" {
+  type = object({
+    enabled       = optional(bool, true)
+    tokenURL      = optional(string)
+    authType      = optional(string)
+    scopes        = optional(list(string))
+    clientId      = optional(string)
+    client_secret = optional(string)
+    jwt = optional(object({
+      private_key_pem = optional(string)
+      kid             = optional(string)
+      algorithm       = optional(string)
+      audience        = optional(string)
+      expiry          = optional(string)
+      clockSkew       = optional(string)
+    }))
+    tls = optional(object({
+      ca_pem               = optional(string)
+      cert_pem             = optional(string)
+      key_pem              = optional(string)
+      insecure_skip_verify = optional(bool)
+    }))
+    cache = optional(object({
+      ttl          = optional(string)
+      refreshAhead = optional(string)
+    }))
+  })
+  default     = null
+  sensitive   = true
+  description = "Optional OAuth 2.0 client-credentials config for the HTTP connector backend, passed through to the middleware-http-connector module's oauth variable. Supports the client_secret_basic/post, tls_client_auth, client_secret_jwt and private_key_jwt grants. Mutually exclusive with http_backend_auth."
+}
+
 # ─── BTC (Bitcoin Testnet3) connector endpoint ────────────────────────────────
 
 variable "btc_rpc_url" {

@@ -47,10 +47,22 @@ Exactly one backend authentication mode should be configured — they are mutual
 | OAuth 2.0 client-credentials | `oauth = { ... }` → bearer token fetched from `tokenURL` and injected |
 | Static `Authorization` header | `endpoint.headers = { Authorization = "..." }` |
 
-OAuth supports three client-authentication methods at the token endpoint via
-`oauth.authType`: `client_secret_basic` (default), `client_secret_post`, and
-`tls_client_auth`. The first two require `oauth.client_secret`; `tls_client_auth`
-requires `oauth.tls.cert_pem` + `oauth.tls.key_pem`.
+OAuth supports five client-authentication methods at the token endpoint via
+`oauth.authType`:
+
+| `oauth.authType` | Requires |
+|------------------|----------|
+| `client_secret_basic` (default) | `oauth.client_secret` |
+| `client_secret_post` | `oauth.client_secret` |
+| `tls_client_auth` | `oauth.tls.cert_pem` + `oauth.tls.key_pem` |
+| `private_key_jwt` | `oauth.jwt.private_key_pem` |
+| `client_secret_jwt` | `oauth.client_secret` |
+
+The last two authenticate with a short-lived signed JWT assertion rather than by
+transmitting the credential. For `private_key_jwt` the module stores the key in an
+`oauth-jwt` file set — register the **public** half with your identity provider under
+the same `oauth.jwt.kid`. `client_secret_jwt` HMAC-signs the same assertion with
+`oauth.client_secret`, which must be at least 32 bytes for the default `HS256`.
 
 ## TLS / mutual-TLS
 
@@ -73,6 +85,7 @@ Drop-in `*.tfvars` files under `examples/`:
 |------|-------|
 | `basic-auth.tfvars` | Backend with HTTP basic auth, headers, retry/throttle tuning |
 | `oauth-client-credentials.tfvars` | Backend behind OAuth 2.0 client-credentials |
+| `oauth-private-key-jwt.tfvars` | OAuth 2.0 client-credentials, authenticating with a signed JWT assertion |
 
 ## Outputs
 

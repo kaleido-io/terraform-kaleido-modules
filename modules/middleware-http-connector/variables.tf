@@ -99,7 +99,8 @@ variable "oauth" {
   type = object({
     enabled  = optional(bool, true)
     tokenURL = optional(string)
-    # authType: one of client_secret_basic | client_secret_post | tls_client_auth (default client_secret_basic).
+    # authType: one of client_secret_basic | client_secret_post | tls_client_auth |
+    # private_key_jwt | client_secret_jwt (default client_secret_basic).
     authType = optional(string)
     scopes   = optional(list(string))
     clientId = optional(string)
@@ -113,6 +114,18 @@ variable "oauth" {
       cert_pem             = optional(string)
       key_pem              = optional(string)
       insecure_skip_verify = optional(bool)
+    }))
+    # JWT client assertion for the private_key_jwt / client_secret_jwt grants. For
+    # private_key_jwt, private_key_pem IS the client credential and is required; it is
+    # stored in an 'oauth-jwt' file set. client_secret_jwt signs with client_secret instead,
+    # so it needs no key here.
+    jwt = optional(object({
+      private_key_pem = optional(string)
+      kid             = optional(string)
+      algorithm       = optional(string)
+      audience        = optional(string)
+      expiry          = optional(string)
+      clockSkew       = optional(string)
     }))
     retry = optional(object({
       enabled              = optional(bool)
@@ -135,5 +148,5 @@ variable "oauth" {
   })
   default     = null
   sensitive   = true
-  description = "Optional OAuth 2.0 client-credentials bearer injection on backend requests (config.oauth). Requires tokenURL and clientId. client_secret is required for the client_secret_basic/client_secret_post grants; tls.cert_pem + tls.key_pem are required for the tls_client_auth grant. Mutually exclusive with backend_auth and a static Authorization header."
+  description = "Optional OAuth 2.0 client-credentials bearer injection on backend requests (config.oauth). Requires tokenURL and clientId. client_secret is required for the client_secret_basic/client_secret_post/client_secret_jwt grants; tls.cert_pem + tls.key_pem are required for tls_client_auth; jwt.private_key_pem is required for private_key_jwt. Mutually exclusive with backend_auth and a static Authorization header."
 }

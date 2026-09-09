@@ -33,11 +33,12 @@ resource "kaleido_platform_service" "this" {
 # supplied via file sets and referenced as "#<file-set>.<file>".
 
 locals {
-  has_backend_auth = var.backend_auth != null
-  has_oauth        = var.oauth != null && try(var.oauth.enabled, true)
-  has_oauth_secret = local.has_oauth && try(var.oauth.client_secret, null) != null
-  has_backend_tls  = var.backend_tls != null
-  has_oauth_tls    = local.has_oauth && try(var.oauth.tls, null) != null
+  has_backend_auth  = var.backend_auth != null
+  has_oauth         = var.oauth != null && try(var.oauth.enabled, true)
+  has_oauth_secret  = local.has_oauth && try(var.oauth.client_secret, null) != null
+  has_backend_tls   = var.backend_tls != null
+  has_oauth_tls     = local.has_oauth && try(var.oauth.tls, null) != null
+  has_oauth_jwt_key = local.has_oauth && try(var.oauth.jwt.private_key_pem, null) != null
 
   # Build the service config, stripping null fields at every level. The connector's JSON
   # schema types nested blocks strictly (no nullables), so an explicit null is rejected —
@@ -85,6 +86,18 @@ locals {
     } : { (k) = v } if v != null
   ]...)
 
+  # privateKey is a fileRef like the TLS material; every other field passes through.
+  oauth_jwt = try(var.oauth.jwt, null) == null ? null : merge([
+    for k, v in {
+      privateKey = local.has_oauth_jwt_key ? { fileRef = "#oauth-jwt.signing.key" } : null
+      kid        = var.oauth.jwt.kid
+      algorithm  = var.oauth.jwt.algorithm
+      audience   = var.oauth.jwt.audience
+      expiry     = var.oauth.jwt.expiry
+      clockSkew  = var.oauth.jwt.clockSkew
+    } : { (k) = v } if v != null
+  ]...)
+
   oauth_retry = try(var.oauth.retry, null) == null ? null : merge([
     for k, v in {
       enabled              = var.oauth.retry.enabled
@@ -122,6 +135,7 @@ locals {
       clientId     = var.oauth.clientId
       clientSecret = local.has_oauth_secret ? { credSetRef = "oauth_client_secret" } : null
       tls          = local.oauth_tls
+      jwt          = local.oauth_jwt
       retry        = local.oauth_retry
       throttle     = local.oauth_throttle
       proxy        = local.oauth_proxy
@@ -183,6 +197,14 @@ locals {
           var.oauth.tls.cert_pem != null ? { "tls.crt" = { type = "application/x-pem-file", data = { text = var.oauth.tls.cert_pem } } } : {},
           var.oauth.tls.key_pem != null ? { "tls.key" = { type = "application/x-pem-file", data = { text = var.oauth.tls.key_pem } } } : {},
         )
+      }
+    } : {},
+    local.has_oauth_jwt_key ? {
+      "oauth-jwt" = {
+        files = {
+          # The connector validates the signing key as a "pem"-typed file (KA040212 otherwise).
+          "signing.key" = { type = "pem", data = { text = var.oauth.jwt.private_key_pem } }
+        }
       }
     } : {},
   )
