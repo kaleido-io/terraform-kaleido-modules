@@ -19,8 +19,17 @@ variable "network_type" {
   type = string
   description = "Type of network to use for the CantonValidatorNetwork. Must be one of: Sandbox, Global."
   validation {
-    condition = contains(["Sandbox", "Devnet", "Testnet", "Mainnet"], var.network_type)
+    condition = contains(["Sandbox", "Global"], var.network_type)
     error_message = "network_type must be one of: Sandbox, Devnet, Testnet, Mainnet."
+  }
+}
+
+variable "network_kind" {
+  type = string
+  description = "Kind of network to use for the CantonValidatorNetwork. Must be one of: Devnet, Testnet, Mainnet."
+  validation {
+    condition = var.network_kind == null || contains(["Devnet", "Testnet", "Mainnet"], var.network_kind)
+    error_message = "network_kind must be one of: Devnet, Testnet, Mainnet."
   }
 }
 
