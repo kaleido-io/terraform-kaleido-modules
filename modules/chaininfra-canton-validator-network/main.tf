@@ -22,13 +22,14 @@ locals {
 locals {
   network_name = var.network_name != null ? var.network_name : var.network_type
   stack_name = var.stack_name != null ? var.stack_name : var.network_type
+  network_init_mode = local.network_kind == "Sandbox" ? "automated" : "manual"
 }
 
 resource "kaleido_platform_network" "this" {
   type        = "CantonValidator"
   name        = local.network_name
   environment = var.environment_id
-  init_mode   = "automated"
+  init_mode   = local.network_init_mode
   config_json = jsonencode(local.config)
 }
 
