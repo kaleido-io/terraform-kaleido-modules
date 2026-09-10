@@ -24,15 +24,6 @@ variable "network_type" {
   }
 }
 
-variable "network_kind" {
-  type = string
-  description = "Kind of network to use for the CantonValidatorNetwork. Must be one of: Devnet, Testnet, Mainnet."
-  validation {
-    condition = var.network_kind == null || contains(["Devnet", "Testnet", "Mainnet"], var.network_kind)
-    error_message = "network_kind must be one of: Devnet, Testnet, Mainnet."
-  }
-}
-
 variable "sponsor_super_validator" {
   type = string
   default = "Digital-Asset-1"

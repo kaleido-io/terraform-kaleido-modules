@@ -1,26 +1,27 @@
 # --- Canton Synchronizer Network + chain-infrastructure stack ───────────────────────────────────
 
 locals {
+  network_kind = var.network_type == "Sandbox" ? "Sandbox" : "Global"
   config = merge(
     {
-      type = var.network_type
+      type = local.network_kind
     },
-    var.network_type == "Sandbox" ? {
+    local.network_kind == "Sandbox" ? {
       sandbox = {
         type = "Local"
       }
     } : {
       global = {
-        type = var.network_kind
-        sponsorSuperValidator = var.sponsor_super_validator
+        type = var.network_type
+        superValidator = var.sponsor_super_validator
       }
     },
   )
 }
 
 locals {
-  network_name = var.network_name != null ? var.network_name : var.network_kind
-  stack_name = var.stack_name != null ? var.stack_name : var.network_kind
+  network_name = var.network_name != null ? var.network_name : var.network_type
+  stack_name = var.stack_name != null ? var.stack_name : var.network_type
 }
 
 resource "kaleido_platform_network" "this" {
