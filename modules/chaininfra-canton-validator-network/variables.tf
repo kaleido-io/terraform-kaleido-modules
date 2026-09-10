@@ -17,7 +17,7 @@ variable "network_name" {
 
 variable "network_type" {
   type = string
-  description = "Type of network to use for the CantonValidatorNetwork. Must be one of: Sandbox, Global."
+  description = "Type of network to use for the CantonValidatorNetwork. Must be one of: Sandbox, Devnet, Testnet, Mainnet."
   validation {
     condition = contains(["Sandbox", "Devnet", "Testnet", "Mainnet"], var.network_type)
     error_message = "network_type must be one of: Sandbox, Devnet, Testnet, Mainnet."
