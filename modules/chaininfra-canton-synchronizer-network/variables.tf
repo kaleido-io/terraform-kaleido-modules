@@ -26,3 +26,9 @@ variable "external_sequencer_endpoint" {
   default = null
   description = "Optional external sequencer endpoint for the CantonSynchronizerNetwork. If not provided, the network will be created without a sequencer."
 }
+
+variable "init_mode" {
+  type = string
+  default = "automated"
+  description = "Optional init mode for the CantonSynchronizerNetwork. If not provided, the network will be created with the default init mode."
+}

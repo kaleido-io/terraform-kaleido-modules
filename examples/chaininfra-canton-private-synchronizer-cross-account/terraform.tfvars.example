@@ -1,0 +1,9 @@
+kaleido_platform_api_account_1 = "<your-kaleido-platform-api-account-1>"
+kaleido_platform_username_account_1 = "<your-kaleido-platform-username-account-1>"
+kaleido_platform_password_account_1 = "<your-kaleido-platform-password-account-1>"
+
+kaleido_platform_api_account_2 = "<your-kaleido-platform-api-account-2>"
+kaleido_platform_username_account_2 = "<your-kaleido-platform-username-account-2>"
+kaleido_platform_password_account_2 = "<your-kaleido-platform-password-account-2>"
+
+platform_connector_zone = "<your-platform-connector-zone>"

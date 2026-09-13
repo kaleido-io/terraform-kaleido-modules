@@ -17,7 +17,7 @@ resource "kaleido_platform_network" "this" {
   type        = "CantonSynchronizer"
   name        = var.network_name
   environment = var.environment_id
-  init_mode   = "automated"
+  init_mode   = var.init_mode
   config_json = jsonencode(local.config)
 }
 
