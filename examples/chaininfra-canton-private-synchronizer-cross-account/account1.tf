@@ -57,6 +57,7 @@ module "chaininfra-canton-synchronizer-node-account-1" {
   stack_id = module.chaininfra-canton-synchronizer-network-account-1.stack_id
   kms_id = kaleido_platform_service.account_1_kms.id
   kms_wallet_name = kaleido_platform_kms_wallet.account_1_kms_wallet.name
+  zone = var.platform_connector_zone
 }
 
 ## ─── Canton participant node ───────────────────────────────────────────────────────────────

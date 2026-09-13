@@ -55,6 +55,7 @@ module "chaininfra-canton-participant-node-account-2-bob" {
   stack_id = module.chaininfra-canton-synchronizer-network-account-2.stack_id
   default_party = "bob"
   kms_key_spec = var.kms_key_spec
+  zone = var.platform_connector_zone
 
   synchronizer_network_ids = [module.chaininfra-canton-synchronizer-network-account-2.network_id]
   kms_id = kaleido_platform_service.account_2_kms.id
