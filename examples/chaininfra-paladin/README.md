@@ -12,6 +12,9 @@ The **noto** and **pente** domain factory contracts are built in ContractManager
 through an EVM Connector standard API as idempotent workflow-engine transactions. The resulting
 domain config is merged into every Paladin node, so all nodes share the same factories.
 
+A **Paladin Connector** is deployed alongside the nodes, bound to node 1, so applications
+can submit public, private and privacy-group transactions through its `paladin` standard API.
+
 ## Modules used
 
 | Module | Role in this example |
@@ -25,6 +28,7 @@ domain config is merged into every Paladin node, so all nodes share the same fac
 | [`chaininfra-paladin-domain-pente`](../../modules/chaininfra-paladin-domain-pente) | Builds and deploys the pente factory contracts and emits the `pente` domain config |
 | [`chaininfra-paladin-network`](../../modules/chaininfra-paladin-network) | The `PaladinNetwork` and `PaladinStack`, with a new EVM registry deployed via node 1 (`registry_mode = "deploy"`) |
 | [`chaininfra-paladin-node`](../../modules/chaininfra-paladin-node) | The Paladin nodes (`<prefix>-1` … `<prefix>-N`), each with its own KMS folder and the noto/pente domains |
+| [`middleware-paladin-connector`](../../modules/middleware-paladin-connector) | Paladin Connector bound to node 1, exposing the `paladin` standard API and the receipt-correlation stream |
 
 ## Additional resources
 
@@ -35,7 +39,7 @@ domain config is merged into every Paladin node, so all nodes share the same fac
 | `kaleido_platform_kms_wallet` | HD wallet (`paladin-wallet`) with a KMS folder per Paladin node |
 | `kaleido_platform_kms_key` (`domain-deployer`) | Signing key used to deploy the noto and pente factory contracts |
 | `kaleido_platform_runtime` / `kaleido_platform_service` (`ContractManager`) | Holds the domain contract builds for ABI visibility and block-indexer decoding |
-| `kaleido_platform_runtime` / `kaleido_platform_service` (`WorkflowEngine`) | Required by the EVM Connector to run the idempotent deploy transactions |
+| `kaleido_platform_runtime` / `kaleido_platform_service` (`WorkflowEngine`) | Required by the EVM Connector (idempotent deploy transactions) and the Paladin Connector |
 | `kaleido_platform_evm_netinfo` (data source) | Reads the base ledger chain ID for the EVM Connector network metadata |
 
 ## Required settings
@@ -73,6 +77,8 @@ domain config is merged into every Paladin node, so all nodes share the same fac
 | `node_endpoints` | Endpoints published by each Paladin node, in node order |
 | `registry_address` | Address of the EVM registry contract deployed by node 1 |
 | `noto_factory_address` / `pente_factory_address` | Addresses of the deployed domain factory contracts |
+| `paladin_connector_service_id` | Service ID of the Paladin Connector bound to node 1 |
+| `paladin_connector_api_name` | Name of the connector's `paladin` standard API |
 
 ## Usage
 
@@ -97,7 +103,7 @@ tofu plan --var-file=input.tfvars
 ```
 
 ### Apply
-Create the environment, base ledger, middleware, domain factories, Paladin network, and nodes:
+Create the environment, base ledger, middleware, domain factories, Paladin network, nodes, and connector:
 
 ```bash
 tofu apply --var-file=input.tfvars
