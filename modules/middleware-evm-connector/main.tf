@@ -59,6 +59,7 @@ locals {
     "evm.gasPricing",
     "evm.nonceAssignment",
     "evm.submission",
+    "evm.prioritization",
     "evm.transactionSerialization",
     "evm.blockEventsConfig",
     "evm.transactionEventsConfig",
@@ -71,6 +72,7 @@ locals {
     "evm.gasPricing"               = var.gas_pricing
     "evm.nonceAssignment"          = var.nonce_assignment
     "evm.submission"               = var.submission
+    "evm.prioritization"           = var.prioritization
     "evm.transactionSerialization" = var.transaction_serialization
     "evm.blockEventsConfig"        = var.block_events
     "evm.transactionEventsConfig"  = var.transaction_events
@@ -109,6 +111,7 @@ resource "kaleido_platform_connector_flow" "submission" {
     "evm.gasPricing"               = kaleido_platform_connector_config_profile.this["evm.gasPricing"].name
     "evm.nonceAssignment"          = kaleido_platform_connector_config_profile.this["evm.nonceAssignment"].name
     "evm.submission"               = kaleido_platform_connector_config_profile.this["evm.submission"].name
+    "evm.prioritization"           = kaleido_platform_connector_config_profile.this["evm.prioritization"].name
     "evm.transactionSerialization" = kaleido_platform_connector_config_profile.this["evm.transactionSerialization"].name
   }
 }

@@ -86,14 +86,40 @@ variable "network" {
 
 variable "confirmations" {
   type = object({
-    count = optional(number, 0)
+    count       = optional(number, 0)
+    monitorMode = optional(string, "first")
+    receipt = optional(object({
+      decodeErrors      = optional(bool, false)
+      decodeEvents      = optional(bool, false)
+      includeBinaryLogs = optional(bool, false)
+      includeLogsBloom  = optional(bool, false)
+      omitSolidityDef   = optional(bool, false)
+      outputFormat      = optional(string, "number=hex-0x")
+    }))
     resubmission = optional(object({
       enabled = optional(bool, false)
       timeout = optional(string, "5m")
     }))
   })
   default     = {}
-  description = "evm.confirmations — number of confirmations before a transaction is considered final, plus optional resubmission policy."
+  description = "evm.confirmations — number of confirmations before a transaction is considered final, receipt serialization, and optional resubmission policy."
+}
+
+variable "prioritization" {
+  type = object({
+    type = optional(string, "fifo")
+    tiered = optional(object({
+      defaultPriority = optional(string)
+      priorityLabel   = optional(string)
+      defaultDelay    = optional(string)
+      tiers = optional(list(object({
+        delay      = optional(string)
+        labelValue = optional(string)
+      })))
+    }))
+  })
+  default     = {}
+  description = "evm.prioritization — submission ordering: fifo (default) or tiered priority delays."
 }
 
 variable "gas_estimation" {
@@ -167,7 +193,7 @@ variable "gas_pricing" {
 
 variable "nonce_assignment" {
   type = object({
-    previousTxnsCondition = optional(string)
+    previousTxnsCondition = optional(string, "requireNonce")
   })
   default     = {}
   description = "evm.nonceAssignment"
