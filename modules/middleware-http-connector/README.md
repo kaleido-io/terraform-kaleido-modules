@@ -45,6 +45,7 @@ Exactly one backend authentication mode should be configured — they are mutual
 |------|-----|
 | HTTP basic auth | `backend_auth = { username, password }` → registered as a `basic_auth` credSet |
 | OAuth 2.0 client-credentials | `oauth = { ... }` → bearer token fetched from `tokenURL` and injected |
+| Self-signed bearer JWT | `jwt_auth = { ... }` → connector signs its own JWT and injects it, no token endpoint |
 | Static `Authorization` header | `endpoint.headers = { Authorization = "..." }` |
 
 OAuth supports five client-authentication methods at the token endpoint via
@@ -63,6 +64,12 @@ transmitting the credential. For `private_key_jwt` the module stores the key in 
 `oauth-jwt` file set — register the **public** half with your identity provider under
 the same `oauth.jwt.kid`. `client_secret_jwt` HMAC-signs the same assertion with
 `oauth.client_secret`, which must be at least 32 bytes for the default `HS256`.
+
+`jwt_auth` is for backends with no token endpoint at all: the connector holds
+`jwt_auth.private_key_pem` (stored in a `jwt-auth` file set) and signs its own bearer
+JWT with `issuer`/`subject`/`audience`, reusing it until `expiry` (default `1h`) rather
+than minting one per request. `jwt_auth.claims` adds extra static claims; the standard
+ones (`iss`, `sub`, `aud`, `jti`, `iat`, `exp`) are reserved.
 
 ## TLS / mutual-TLS
 
@@ -86,6 +93,7 @@ Drop-in `*.tfvars` files under `examples/`:
 | `basic-auth.tfvars` | Backend with HTTP basic auth, headers, retry/throttle tuning |
 | `oauth-client-credentials.tfvars` | Backend behind OAuth 2.0 client-credentials |
 | `oauth-private-key-jwt.tfvars` | OAuth 2.0 client-credentials, authenticating with a signed JWT assertion |
+| `jwt-auth.tfvars` | Backend authenticated with a self-signed bearer JWT (no token endpoint) |
 
 ## Outputs
 

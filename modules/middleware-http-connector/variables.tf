@@ -150,3 +150,33 @@ variable "oauth" {
   sensitive   = true
   description = "Optional OAuth 2.0 client-credentials bearer injection on backend requests (config.oauth). Requires tokenURL and clientId. client_secret is required for the client_secret_basic/client_secret_post/client_secret_jwt grants; tls.cert_pem + tls.key_pem are required for tls_client_auth; jwt.private_key_pem is required for private_key_jwt. Mutually exclusive with backend_auth and a static Authorization header."
 }
+
+
+# ─── Self-signed bearer JWT injection ─────────────────────────────────────────
+
+variable "jwt_auth" {
+  type = object({
+    issuer          = string
+    subject         = string
+    audience        = optional(string)
+    private_key_pem = string
+    kid             = optional(string)
+    algorithm       = optional(string)
+    expiry          = optional(string)
+    claims          = optional(map(string))
+    cache           = optional(object({ refresh_ahead = optional(string) }))
+  })
+  default     = null
+  sensitive   = true
+  description = "Optional self-signed bearer JWT injection on backend requests (config.jwt). The connector signs its own JWT from issuer/subject/audience with private_key_pem (stored in a 'jwt-auth' file set) and injects it as Authorization: Bearer <jwt>, reusing it until expiry rather than minting one per request. Mutually exclusive with backend_auth, oauth, and a static Authorization header."
+
+  validation {
+    condition = length(compact([
+      var.backend_auth != null ? "backend_auth" : "",
+      var.oauth != null && try(var.oauth.enabled, true) ? "oauth" : "",
+      var.jwt_auth != null ? "jwt_auth" : "",
+      contains(keys(var.endpoint.headers == null ? {} : var.endpoint.headers), "Authorization") ? "header" : "",
+    ])) <= 1
+    error_message = "backend_auth, oauth, jwt_auth, and a static Authorization header (endpoint.headers[\"Authorization\"]) are mutually exclusive — set at most one."
+  }
+}
