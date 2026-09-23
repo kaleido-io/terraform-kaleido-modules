@@ -36,7 +36,7 @@ locals {
       synchronizerNetworks = local.synchronizer_networks
     } : {},
     var.onboarding_secret != null ? {
-      onboardingSecret = var.onboarding_secret
+      onBoardingSecret = var.onboarding_secret
     } : {}
   )
 }
