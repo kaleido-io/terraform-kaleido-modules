@@ -58,6 +58,7 @@ locals {
     "evm.gasEstimation",
     "evm.gasPricing",
     "evm.nonceAssignment",
+    "evm.prioritization",
     "evm.submission",
     "evm.transactionSerialization",
     "evm.blockEventsConfig",
@@ -65,7 +66,13 @@ locals {
     "evm.contractEventListener",
   ])
 
-  profile_values = {
+  # Optional config types of the submission flow get a profile, and a binding, only when set - the
+  # same as configuring the connector in the console, which deploys the type and leaves it unbound.
+  optional_profile_values = {
+    for t, v in { "evm.prioritization" = var.prioritization } : t => v if v != null
+  }
+
+  profile_values = merge({
     "evm.confirmations"            = var.confirmations
     "evm.gasEstimation"            = var.gas_estimation
     "evm.gasPricing"               = var.gas_pricing
@@ -75,7 +82,17 @@ locals {
     "evm.blockEventsConfig"        = var.block_events
     "evm.transactionEventsConfig"  = var.transaction_events
     "evm.contractEventListener"    = var.contract_event_listener
-  }
+  }, local.optional_profile_values)
+
+  # The submission flow's config types, each bound to the profile of the same type above.
+  submission_config_types = concat([
+    "evm.confirmations",
+    "evm.gasEstimation",
+    "evm.gasPricing",
+    "evm.nonceAssignment",
+    "evm.submission",
+    "evm.transactionSerialization",
+  ], keys(local.optional_profile_values))
 }
 
 resource "kaleido_platform_connector_config_type" "this" {
@@ -83,6 +100,59 @@ resource "kaleido_platform_connector_config_type" "this" {
   environment = var.environment_id
   service     = kaleido_platform_service.this.id
   name        = each.key
+}
+
+# ─── Chain defaults (platform catalog) ─────────────────────────────────────────
+
+# The platform catalog's default profile values for the ecosystem and network - the values the
+# console applies when it configures a connector. There are none for a chain with no ecosystem.
+data "kaleido_platform_catalog_web3ecosystem_defaults" "chain" {
+  count     = var.ecosystem == null ? 0 : 1
+  ecosystem = var.ecosystem.name
+  network   = try(var.network.name, null)
+}
+
+# The chain defaults as they were when first applied, one per config type, so a change to the catalog
+# never silently changes a deployed connector. A new ecosystem or network takes a fresh copy, and a
+# config type the catalog adds later is picked up when it first appears.
+resource "terraform_data" "chain_default" {
+  for_each         = var.track_chain_defaults ? {} : local.catalog_profile_values
+  input            = each.value
+  triggers_replace = [try(var.ecosystem.name, null), try(var.network.name, null)]
+  lifecycle {
+    ignore_changes = [input]
+  }
+}
+
+locals {
+  # JSON-encoded profile values, keyed by config type.
+  catalog_profile_values = try(data.kaleido_platform_catalog_web3ecosystem_defaults.chain[0].config_profiles, {})
+  chain_profile_values = var.track_chain_defaults ? local.catalog_profile_values : {
+    for t, d in terraform_data.chain_default : t => d.output
+  }
+
+  # Each profile's value is the caller's merged into the chain default: settings the caller leaves out,
+  # or null, keep the chain's value. The merge is also made against the catalog's current defaults, to
+  # tell when a held default that has since changed would change a deployed profile.
+  caller_profile_json = { for t, v in local.profile_values : t => v == null ? "null" : jsonencode(v) }
+  profile_value_json = {
+    for t, j in local.caller_profile_json : t => provider::kaleido::merge_json(lookup(local.chain_profile_values, t, "{}"), j)
+  }
+  current_profile_value_json = {
+    for t, j in local.caller_profile_json : t => provider::kaleido::merge_json(lookup(local.catalog_profile_values, t, "{}"), j)
+  }
+
+  # Profiles whose value would change if the catalog's current defaults were taken.
+  stale_chain_defaults = sort([
+    for t, j in local.profile_value_json : t if local.current_profile_value_json[t] != j
+  ])
+}
+
+check "chain_defaults_current" {
+  assert {
+    condition     = length(local.stale_chain_defaults) == 0
+    error_message = "The platform catalog's chain defaults have changed since this connector was deployed, which would change the ${join(", ", local.stale_chain_defaults)} profiles. The deployed profiles keep the values they were given. To take the current defaults, set track_chain_defaults = true, or replace module.<name>.terraform_data.chain_default."
+  }
 }
 
 # ─── Config profiles (one per type) ───────────────────────────────────────────
@@ -93,23 +163,73 @@ resource "kaleido_platform_connector_config_profile" "this" {
   service     = kaleido_platform_service.this.id
   name        = each.key
   config_type = each.key
-  value_json  = jsonencode(each.value)
+  value_json  = local.profile_value_json[each.key]
   depends_on  = [kaleido_platform_connector_config_type.this]
 }
 
 # ─── Connector flows ──────────────────────────────────────────────────────────
 
+locals {
+  # The connector flows this module deploys. To add one, add it here, add its
+  # kaleido_platform_connector_flow resource below, and add it to flow_deployed_version.
+  connector_flows = ["submission", "query"]
+}
+
+# The template versions the connector service stores for each flow, for "latest" and for the check
+# below. On a connector's first deploy these are read during apply, once the service exists.
+data "kaleido_platform_connector_template_versions" "flow" {
+  for_each    = toset(local.connector_flows)
+  environment = var.environment_id
+  service     = kaleido_platform_service.this.id
+  kind        = "connector_flow"
+  name        = each.key
+}
+
+locals {
+  # Each flow's version: pinned, the latest stored ("latest"), or null - held at its deployed version
+  # by the provider, which deploys the latest version when the flow is first created.
+  flow_version = {
+    for f, d in data.kaleido_platform_connector_template_versions.flow : f => (
+      lookup(var.flow_versions, f, null) == "latest" ? d.latest : lookup(var.flow_versions, f, null)
+    )
+  }
+  # A pinned submission version as one comparable number (2026.09.0 is 202600090000), or null when the
+  # flow is held or tracks latest. Terraform does not short-circuit ||, so comparisons with it must
+  # handle the null themselves.
+  submission_pin = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", lookup(var.flow_versions, "submission", ""))) ? sum([
+    for i, p in split(".", var.flow_versions["submission"]) : tonumber(p) * pow(10000, 2 - i)
+  ]) : null
+
+  flow_deployed_version = {
+    submission = kaleido_platform_connector_flow.submission.version
+    query      = kaleido_platform_connector_flow.query.version
+  }
+
+  # Held flows the connector service now stores a newer version of.
+  held_flow_upgrades = {
+    for f, d in data.kaleido_platform_connector_template_versions.flow : f => d.latest
+    if !contains(keys(var.flow_versions), f) && local.flow_deployed_version[f] != d.latest
+  }
+}
+
+check "flow_versions_current" {
+  assert {
+    condition     = length(local.held_flow_upgrades) == 0
+    error_message = "Newer connector flow versions are available: ${join(", ", [for f, v in local.held_flow_upgrades : "${f} ${local.flow_deployed_version[f]} -> ${v}"])}. Held flows stay at their deployed version. To upgrade, set flow_versions, e.g. { ${join(", ", [for f, v in local.held_flow_upgrades : "${f} = \"${v}\""])} } to pin, or \"latest\" to track."
+  }
+}
+
 resource "kaleido_platform_connector_flow" "submission" {
   environment = var.environment_id
   service     = kaleido_platform_service.this.id
   name        = "submission"
-  config_type_bindings = {
-    "evm.confirmations"            = kaleido_platform_connector_config_profile.this["evm.confirmations"].name
-    "evm.gasEstimation"            = kaleido_platform_connector_config_profile.this["evm.gasEstimation"].name
-    "evm.gasPricing"               = kaleido_platform_connector_config_profile.this["evm.gasPricing"].name
-    "evm.nonceAssignment"          = kaleido_platform_connector_config_profile.this["evm.nonceAssignment"].name
-    "evm.submission"               = kaleido_platform_connector_config_profile.this["evm.submission"].name
-    "evm.transactionSerialization" = kaleido_platform_connector_config_profile.this["evm.transactionSerialization"].name
+  version     = local.flow_version["submission"]
+  # Bound by ID, not name: the connector resolves a profile once, at deploy or upgrade, so a profile
+  # replaced under the same name would leave the flow on the deleted one with no diff in the plan.
+  config_profiles = {
+    for t in local.submission_config_types : t => {
+      profile_id = kaleido_platform_connector_config_profile.this[t].id
+    }
   }
 }
 
@@ -117,6 +237,7 @@ resource "kaleido_platform_connector_flow" "query" {
   environment = var.environment_id
   service     = kaleido_platform_service.this.id
   name        = "query"
+  version     = local.flow_version["query"]
 }
 
 # ─── Stream factories ─────────────────────────────────────────────────────────
@@ -150,11 +271,20 @@ resource "kaleido_platform_connector_standard_api" "evm" {
   }
 }
 
+resource "kaleido_platform_connector_standard_api" "utilities" {
+  count       = var.deploy_utilities_api ? 1 : 0
+  environment = var.environment_id
+  service     = kaleido_platform_service.this.id
+  name        = "utilities"
+  # Synchronous operations only, so it binds no connector flows.
+  flow_type_bindings = {}
+}
+
 # ─── Standard streams ─────────────────────────────────────────────────────────
 
 resource "kaleido_platform_connector_standard_stream" "new_blocks" {
   environment               = var.environment_id
   service                   = kaleido_platform_service.this.id
   name                      = "newBlocks"
-  config_profile_name_or_id = kaleido_platform_connector_config_profile.this["evm.blockEventsConfig"].name
+  config_profile_name_or_id = kaleido_platform_connector_config_profile.this["evm.blockEventsConfig"].id
 }

@@ -38,6 +38,26 @@ variable "database_name" {
   description = "Optional external database name for the EVMConnector service. Required only on platform instances configured for externally-provisioned databases; omit for managed-database instances."
 }
 
+variable "flow_versions" {
+  type        = map(string)
+  default     = {}
+  description = "Template version of each connector flow, keyed by flow name (submission, query). A version (e.g. \"2026.09.0\") pins the flow there; \"latest\" upgrades it whenever the connector service stores a newer version. A flow left out is deployed at the latest version and then held there until it is pinned or set to latest. Versions only move forward."
+  validation {
+    condition     = alltrue([for f in keys(var.flow_versions) : contains(local.connector_flows, f)])
+    error_message = "flow_versions keys must be connector flow names: ${join(", ", local.connector_flows)}."
+  }
+  validation {
+    condition     = alltrue([for v in values(var.flow_versions) : v == "latest" || can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", v))])
+    error_message = "Each flow_versions value must be \"latest\" or a version such as \"2026.09.0\"."
+  }
+}
+
+variable "deploy_utilities_api" {
+  type        = bool
+  default     = false
+  description = "Deploy the EVM utilities standard API, which provides synchronous operations such as looking up any transaction by hash."
+}
+
 # ─── Service-level config ─────────────────────────────────────────────────────
 
 variable "evm_gateway_service_id" {
@@ -83,24 +103,38 @@ variable "network" {
 
 # ─── Config profile values (one variable per upstream config type) ────────────
 # Schemas mirror <upstream connector definitions source>/evm/config_types/*.yaml.
+#
+# Each variable is the value of the connector's default profile for that config type. Left null, the
+# profile takes the chain's default from the platform catalog, when the catalog has one for the
+# ecosystem and network, and otherwise the connector's own defaults. A value that is set is deep
+# merged into the chain's default, so only the settings given change.
+
+variable "track_chain_defaults" {
+  type        = bool
+  default     = false
+  description = "Follow the platform catalog's chain defaults as they change. By default the defaults are read once, when the connector is first deployed (or its ecosystem or network changes), and held; a check warns when the catalog has since changed."
+}
 
 variable "confirmations" {
+  # No defaults inside the object: a value the caller leaves out is left to the connector, rather
+  # than pinned here. Pinning count to 0 made a connector on a public chain wait for no
+  # confirmations at all.
   type = object({
-    count = optional(number, 0)
+    count = optional(number)
     resubmission = optional(object({
-      enabled = optional(bool, false)
-      timeout = optional(string, "5m")
+      enabled = optional(bool)
+      timeout = optional(string)
     }))
   })
-  default     = {}
-  description = "evm.confirmations — number of confirmations before a transaction is considered final, plus optional resubmission policy."
+  default     = null
+  description = "evm.confirmations — number of confirmations before a transaction is considered final, plus optional resubmission policy. Omit to use the chain's default from the platform catalog (for example 12 on Ethereum mainnet), or the connector's where the catalog has none."
 }
 
 variable "gas_estimation" {
   type = object({
     scaleFactor = optional(number, 1.0)
   })
-  default     = {}
+  default     = null
   description = "evm.gasEstimation"
 }
 
@@ -110,7 +144,7 @@ variable "gas_pricing" {
       name                 = optional(string)
       enableLegacyFallback = optional(bool)
     }))
-    # `source` is a tagged union — set exactly one of fixedGasPrice / gasOracleAPI / RPCEndpoint.
+    # `source` is a tagged union — set exactly one of fixedGasPrice / gasOracleAPI / rpcEndpoint.
     source = optional(object({
       fixedGasPrice = optional(object({
         enabled              = optional(bool)
@@ -135,7 +169,7 @@ variable "gas_pricing" {
           ttl     = optional(string)
         }))
       }))
-      RPCEndpoint = optional(object({
+      rpcEndpoint = optional(object({
         cache = optional(object({
           enabled = optional(bool)
           size    = optional(string)
@@ -154,22 +188,23 @@ variable "gas_pricing" {
       maxPriorityFeePerGas = optional(object({ multiplier = optional(number) }))
       gasPrice             = optional(object({ multiplier = optional(number) }))
     }))
+    # Caps are strings in the smallest denomination (wei), as values can exceed a number's precision.
     caps = optional(object({
       enabled              = optional(bool)
-      maxFeePerGas         = optional(number)
-      maxPriorityFeePerGas = optional(number)
-      gasPrice             = optional(number)
+      maxFeePerGas         = optional(string)
+      maxPriorityFeePerGas = optional(string)
+      gasPrice             = optional(string)
     }))
   })
-  default     = {}
-  description = "evm.gasPricing — format (eip1559|legacy), source (tagged union: fixedGasPrice | gasOracleAPI | RPCEndpoint), auto-increment, and caps."
+  default     = null
+  description = "evm.gasPricing — format (eip1559|legacy), source (tagged union: fixedGasPrice | gasOracleAPI | rpcEndpoint), auto-increment, and caps."
 }
 
 variable "nonce_assignment" {
   type = object({
     previousTxnsCondition = optional(string)
   })
-  default     = {}
+  default     = null
   description = "evm.nonceAssignment"
 }
 
@@ -182,16 +217,48 @@ variable "submission" {
       minInterval        = optional(string)
     })))
   })
-  default     = {}
+  default     = null
   description = "evm.submission — error-type matchers keyed by submission error category."
 }
 
 variable "transaction_serialization" {
   type = object({
-    useOriginalFormat = optional(bool, false)
+    format = optional(string)
   })
-  default     = {}
-  description = "evm.transactionSerialization"
+  default     = null
+  description = "evm.transactionSerialization — format is auto (derive from the gas price fields, the default) or original (pre-EIP-155 legacy, without the chain ID in the signed payload)."
+  validation {
+    condition     = contains(["auto", "original"], coalesce(try(var.transaction_serialization.format, null), "auto"))
+    error_message = "transaction_serialization.format must be auto or original."
+  }
+}
+
+variable "prioritization" {
+  type = object({
+    # fifo (arrival order, the default) or tiered.
+    type = optional(string)
+    tiered = optional(object({
+      priorityLabel   = optional(string)
+      defaultPriority = optional(string)
+      defaultDelay    = optional(string)
+      # Ordered highest first: earlier tiers receive lower nonces.
+      tiers = optional(list(object({
+        labelValue = optional(string)
+        delay      = optional(string)
+      })))
+    }))
+  })
+  default     = null
+  description = "evm.prioritization — the order in which transactions are assigned nonces: fifo, or tiered by the value of a transaction label. It is an optional config type of the submission flow: the type is always deployed, but a profile is created and bound only when this is set. Omitted, nonces are assigned in arrival order."
+  validation {
+    condition     = contains(["fifo", "tiered"], coalesce(try(var.prioritization.type, null), "fifo"))
+    error_message = "prioritization.type must be fifo or tiered."
+  }
+  # The submission flow's prioritization slot was added in 2026.09.0; an earlier version cannot bind it.
+  validation {
+    condition     = var.prioritization == null || coalesce(local.submission_pin, 202600090000) >= 202600090000
+    error_message = "prioritization needs the submission flow at version 2026.09.0 or later; flow_versions pins it earlier."
+  }
 }
 
 variable "block_events" {
@@ -199,7 +266,7 @@ variable "block_events" {
     minWait = optional(string, "500ms")
     maxWait = optional(string, "5s")
   })
-  default     = {}
+  default     = null
   description = "evm.blockEventsConfig — debounce timings for the latest-block poller."
 }
 
@@ -246,7 +313,7 @@ variable "transaction_events" {
     })))
     unfiltered = optional(bool)
   })
-  default     = {}
+  default     = null
   description = "evm.transactionEventsConfig — block-walking event stream tuning. eventMode is one of all|require_decoded|filter_decoded."
 }
 
@@ -262,6 +329,6 @@ variable "contract_event_listener" {
       event = optional(any)
     })))
   })
-  default     = {}
+  default     = null
   description = "evm.contractEventListener — block-walking listener bound to a contract address + event ABI."
 }
