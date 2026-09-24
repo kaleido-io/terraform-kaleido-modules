@@ -85,15 +85,18 @@ variable "network" {
 # Schemas mirror <upstream connector definitions source>/evm/config_types/*.yaml.
 
 variable "confirmations" {
+  # No defaults inside the object: a value the caller leaves out is left to the connector, rather
+  # than pinned here. Pinning count to 0 made a connector on a public chain wait for no
+  # confirmations at all.
   type = object({
-    count = optional(number, 0)
+    count = optional(number)
     resubmission = optional(object({
-      enabled = optional(bool, false)
-      timeout = optional(string, "5m")
+      enabled = optional(bool)
+      timeout = optional(string)
     }))
   })
-  default     = {}
-  description = "evm.confirmations — number of confirmations before a transaction is considered final, plus optional resubmission policy."
+  default     = null
+  description = "evm.confirmations — number of confirmations before a transaction is considered final, plus optional resubmission policy. Omit to use the connector's defaults."
 }
 
 variable "gas_estimation" {
@@ -110,7 +113,7 @@ variable "gas_pricing" {
       name                 = optional(string)
       enableLegacyFallback = optional(bool)
     }))
-    # `source` is a tagged union — set exactly one of fixedGasPrice / gasOracleAPI / RPCEndpoint.
+    # `source` is a tagged union — set exactly one of fixedGasPrice / gasOracleAPI / rpcEndpoint.
     source = optional(object({
       fixedGasPrice = optional(object({
         enabled              = optional(bool)
@@ -135,7 +138,7 @@ variable "gas_pricing" {
           ttl     = optional(string)
         }))
       }))
-      RPCEndpoint = optional(object({
+      rpcEndpoint = optional(object({
         cache = optional(object({
           enabled = optional(bool)
           size    = optional(string)
@@ -154,15 +157,16 @@ variable "gas_pricing" {
       maxPriorityFeePerGas = optional(object({ multiplier = optional(number) }))
       gasPrice             = optional(object({ multiplier = optional(number) }))
     }))
+    # Caps are strings in the smallest denomination (wei), as values can exceed a number's precision.
     caps = optional(object({
       enabled              = optional(bool)
-      maxFeePerGas         = optional(number)
-      maxPriorityFeePerGas = optional(number)
-      gasPrice             = optional(number)
+      maxFeePerGas         = optional(string)
+      maxPriorityFeePerGas = optional(string)
+      gasPrice             = optional(string)
     }))
   })
   default     = {}
-  description = "evm.gasPricing — format (eip1559|legacy), source (tagged union: fixedGasPrice | gasOracleAPI | RPCEndpoint), auto-increment, and caps."
+  description = "evm.gasPricing — format (eip1559|legacy), source (tagged union: fixedGasPrice | gasOracleAPI | rpcEndpoint), auto-increment, and caps."
 }
 
 variable "nonce_assignment" {
@@ -188,10 +192,37 @@ variable "submission" {
 
 variable "transaction_serialization" {
   type = object({
-    useOriginalFormat = optional(bool, false)
+    format = optional(string)
   })
   default     = {}
-  description = "evm.transactionSerialization"
+  description = "evm.transactionSerialization — format is auto (derive from the gas price fields, the default) or original (pre-EIP-155 legacy, without the chain ID in the signed payload)."
+  validation {
+    condition     = contains(["auto", "original"], coalesce(var.transaction_serialization.format, "auto"))
+    error_message = "transaction_serialization.format must be auto or original."
+  }
+}
+
+variable "prioritization" {
+  type = object({
+    # fifo (arrival order, the default) or tiered.
+    type = optional(string)
+    tiered = optional(object({
+      priorityLabel   = optional(string)
+      defaultPriority = optional(string)
+      defaultDelay    = optional(string)
+      # Ordered highest first: earlier tiers receive lower nonces.
+      tiers = optional(list(object({
+        labelValue = optional(string)
+        delay      = optional(string)
+      })))
+    }))
+  })
+  default     = {}
+  description = "evm.prioritization — the order in which transactions are assigned nonces: fifo, or tiered by the value of a transaction label."
+  validation {
+    condition     = contains(["fifo", "tiered"], coalesce(var.prioritization.type, "fifo"))
+    error_message = "prioritization.type must be fifo or tiered."
+  }
 }
 
 variable "block_events" {

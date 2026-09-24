@@ -58,6 +58,7 @@ locals {
     "evm.gasEstimation",
     "evm.gasPricing",
     "evm.nonceAssignment",
+    "evm.prioritization",
     "evm.submission",
     "evm.transactionSerialization",
     "evm.blockEventsConfig",
@@ -70,12 +71,24 @@ locals {
     "evm.gasEstimation"            = var.gas_estimation
     "evm.gasPricing"               = var.gas_pricing
     "evm.nonceAssignment"          = var.nonce_assignment
+    "evm.prioritization"           = var.prioritization
     "evm.submission"               = var.submission
     "evm.transactionSerialization" = var.transaction_serialization
     "evm.blockEventsConfig"        = var.block_events
     "evm.transactionEventsConfig"  = var.transaction_events
     "evm.contractEventListener"    = var.contract_event_listener
   }
+
+  # The submission flow's config types, each bound to the profile of the same type above.
+  submission_config_types = [
+    "evm.confirmations",
+    "evm.gasEstimation",
+    "evm.gasPricing",
+    "evm.nonceAssignment",
+    "evm.prioritization",
+    "evm.submission",
+    "evm.transactionSerialization",
+  ]
 }
 
 resource "kaleido_platform_connector_config_type" "this" {
@@ -93,7 +106,8 @@ resource "kaleido_platform_connector_config_profile" "this" {
   service     = kaleido_platform_service.this.id
   name        = each.key
   config_type = each.key
-  value_json  = jsonencode(each.value)
+  # A variable left null sends an empty profile, so every value is the connector's default.
+  value_json  = each.value == null ? "{}" : jsonencode(each.value)
   depends_on  = [kaleido_platform_connector_config_type.this]
 }
 
@@ -103,13 +117,12 @@ resource "kaleido_platform_connector_flow" "submission" {
   environment = var.environment_id
   service     = kaleido_platform_service.this.id
   name        = "submission"
-  config_type_bindings = {
-    "evm.confirmations"            = kaleido_platform_connector_config_profile.this["evm.confirmations"].name
-    "evm.gasEstimation"            = kaleido_platform_connector_config_profile.this["evm.gasEstimation"].name
-    "evm.gasPricing"               = kaleido_platform_connector_config_profile.this["evm.gasPricing"].name
-    "evm.nonceAssignment"          = kaleido_platform_connector_config_profile.this["evm.nonceAssignment"].name
-    "evm.submission"               = kaleido_platform_connector_config_profile.this["evm.submission"].name
-    "evm.transactionSerialization" = kaleido_platform_connector_config_profile.this["evm.transactionSerialization"].name
+  # Bound by ID, not name: the connector resolves a profile once, at deploy or upgrade, so a profile
+  # replaced under the same name would leave the flow on the deleted one with no diff in the plan.
+  config_profiles = {
+    for t in local.submission_config_types : t => {
+      profile_id = kaleido_platform_connector_config_profile.this[t].id
+    }
   }
 }
 
@@ -156,5 +169,5 @@ resource "kaleido_platform_connector_standard_stream" "new_blocks" {
   environment               = var.environment_id
   service                   = kaleido_platform_service.this.id
   name                      = "newBlocks"
-  config_profile_name_or_id = kaleido_platform_connector_config_profile.this["evm.blockEventsConfig"].name
+  config_profile_name_or_id = kaleido_platform_connector_config_profile.this["evm.blockEventsConfig"].id
 }

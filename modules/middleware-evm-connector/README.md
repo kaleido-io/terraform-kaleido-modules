@@ -26,12 +26,13 @@ variables.
 | `jsonrpc_auth` | `null` | Basic-auth credentials for the JSON-RPC endpoint (sensitive) |
 | `ecosystem` | `null` | Ecosystem metadata (e.g. `{ name = "ethereum", displayName = "Ethereum" }`) |
 | `network` | `null` | Network metadata (e.g. `{ name = "ethereum-mainnet", chainId = "1" }`) |
-| `confirmations` | `{}` | `evm.confirmations` — confirmation count and resubmission policy |
+| `confirmations` | `null` | `evm.confirmations` — confirmation count and resubmission policy; omit for the connector's defaults |
 | `gas_estimation` | `{}` | `evm.gasEstimation` — gas estimate scale factor |
 | `gas_pricing` | `{}` | `evm.gasPricing` — fee format, source, auto-increment, and caps |
 | `nonce_assignment` | `{}` | `evm.nonceAssignment` |
+| `prioritization` | `{}` | `evm.prioritization` — nonce assignment order: `fifo` or `tiered` |
 | `submission` | `{}` | `evm.submission` — error-type matchers for submission retries |
-| `transaction_serialization` | `{}` | `evm.transactionSerialization` |
+| `transaction_serialization` | `{}` | `evm.transactionSerialization` — `format`: `auto` or `original` |
 | `block_events` | `{}` | `evm.blockEventsConfig` — latest-block poller debounce timings |
 | `transaction_events` | `{}` | `evm.transactionEventsConfig` — block-walking event stream tuning |
 | `contract_event_listener` | `{}` | `evm.contractEventListener` — contract address + event ABI listener |
