@@ -51,6 +51,11 @@ output "standard_api_id" {
   description = "ID of the deployed EVM standard API."
 }
 
+output "utilities_api_id" {
+  value       = one(kaleido_platform_connector_standard_api.utilities[*].id)
+  description = "ID of the deployed EVM utilities standard API, or null when deploy_utilities_api is false."
+}
+
 output "stream_factories" {
   value = {
     block_events       = kaleido_platform_connector_stream_factory.block_events.id

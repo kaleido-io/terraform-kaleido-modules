@@ -21,6 +21,7 @@ variables.
 | `runtime_size` | `Small` | `EVMConnector` runtime size |
 | `runtime_zone` | `null` | Deployment zone; `null` uses the platform default |
 | `database_name` | `null` | External database name; required only on instances with externally-provisioned databases |
+| `deploy_utilities_api` | `false` | Also deploy the EVM `utilities` standard API (synchronous operations such as looking up any transaction by hash) |
 | `evm_gateway_service_id` | `null` | [`service_id`](../chaininfra-evm-gateway#outputs) from [`chaininfra-evm-gateway`](../chaininfra-evm-gateway) for Kaleido-managed Besu networks |
 | `jsonrpc_url` | `null` | External JSON-RPC URL for public networks |
 | `jsonrpc_auth` | `null` | Basic-auth credentials for the JSON-RPC endpoint (sensitive) |
@@ -82,6 +83,7 @@ Drop-in `*.tfvars` files under `examples/`:
 | `flow_ids` | Map of connector flow name to deployed flow ID (`submission`, `query`) |
 | `standard_api_name` | Name of the deployed EVM standard API |
 | `standard_api_id` | ID of the deployed EVM standard API |
+| `utilities_api_id` | ID of the deployed EVM `utilities` standard API; `null` unless `deploy_utilities_api` is set |
 | `stream_factories` | Map of deployed stream factory IDs (`block_events`, `transaction_events`) |
 | `config_profiles` | Map of config-type name to deployed config profile ID |
 

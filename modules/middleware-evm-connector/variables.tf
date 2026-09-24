@@ -38,6 +38,12 @@ variable "database_name" {
   description = "Optional external database name for the EVMConnector service. Required only on platform instances configured for externally-provisioned databases; omit for managed-database instances."
 }
 
+variable "deploy_utilities_api" {
+  type        = bool
+  default     = false
+  description = "Deploy the EVM utilities standard API, which provides synchronous operations such as looking up any transaction by hash."
+}
+
 # ─── Service-level config ─────────────────────────────────────────────────────
 
 variable "evm_gateway_service_id" {

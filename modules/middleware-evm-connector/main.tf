@@ -163,6 +163,15 @@ resource "kaleido_platform_connector_standard_api" "evm" {
   }
 }
 
+resource "kaleido_platform_connector_standard_api" "utilities" {
+  count       = var.deploy_utilities_api ? 1 : 0
+  environment = var.environment_id
+  service     = kaleido_platform_service.this.id
+  name        = "utilities"
+  # Synchronous operations only, so it binds no connector flows.
+  flow_type_bindings = {}
+}
+
 # ─── Standard streams ─────────────────────────────────────────────────────────
 
 resource "kaleido_platform_connector_standard_stream" "new_blocks" {
