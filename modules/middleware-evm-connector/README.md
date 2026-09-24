@@ -31,7 +31,7 @@ variables.
 | `gas_estimation` | `{}` | `evm.gasEstimation` — gas estimate scale factor |
 | `gas_pricing` | `{}` | `evm.gasPricing` — fee format, source, auto-increment, and caps |
 | `nonce_assignment` | `{}` | `evm.nonceAssignment` |
-| `prioritization` | `{}` | `evm.prioritization` — nonce assignment order: `fifo` or `tiered` |
+| `prioritization` | `null` | `evm.prioritization` — nonce assignment order: `fifo` or `tiered`. Omitted, no profile is created or bound and nonces are assigned in arrival order |
 | `submission` | `{}` | `evm.submission` — error-type matchers for submission retries |
 | `transaction_serialization` | `{}` | `evm.transactionSerialization` — `format`: `auto` or `original` |
 | `block_events` | `{}` | `evm.blockEventsConfig` — latest-block poller debounce timings |

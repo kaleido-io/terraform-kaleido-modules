@@ -66,29 +66,33 @@ locals {
     "evm.contractEventListener",
   ])
 
-  profile_values = {
+  # Optional config types of the submission flow get a profile, and a binding, only when set - the
+  # same as configuring the connector in the console, which deploys the type and leaves it unbound.
+  optional_profile_values = {
+    for t, v in { "evm.prioritization" = var.prioritization } : t => v if v != null
+  }
+
+  profile_values = merge({
     "evm.confirmations"            = var.confirmations
     "evm.gasEstimation"            = var.gas_estimation
     "evm.gasPricing"               = var.gas_pricing
     "evm.nonceAssignment"          = var.nonce_assignment
-    "evm.prioritization"           = var.prioritization
     "evm.submission"               = var.submission
     "evm.transactionSerialization" = var.transaction_serialization
     "evm.blockEventsConfig"        = var.block_events
     "evm.transactionEventsConfig"  = var.transaction_events
     "evm.contractEventListener"    = var.contract_event_listener
-  }
+  }, local.optional_profile_values)
 
   # The submission flow's config types, each bound to the profile of the same type above.
-  submission_config_types = [
+  submission_config_types = concat([
     "evm.confirmations",
     "evm.gasEstimation",
     "evm.gasPricing",
     "evm.nonceAssignment",
-    "evm.prioritization",
     "evm.submission",
     "evm.transactionSerialization",
-  ]
+  ], keys(local.optional_profile_values))
 }
 
 resource "kaleido_platform_connector_config_type" "this" {

@@ -223,10 +223,10 @@ variable "prioritization" {
       })))
     }))
   })
-  default     = {}
-  description = "evm.prioritization — the order in which transactions are assigned nonces: fifo, or tiered by the value of a transaction label."
+  default     = null
+  description = "evm.prioritization — the order in which transactions are assigned nonces: fifo, or tiered by the value of a transaction label. It is an optional config type of the submission flow: the type is always deployed, but a profile is created and bound only when this is set. Omitted, nonces are assigned in arrival order."
   validation {
-    condition     = contains(["fifo", "tiered"], coalesce(var.prioritization.type, "fifo"))
+    condition     = contains(["fifo", "tiered"], coalesce(try(var.prioritization.type, null), "fifo"))
     error_message = "prioritization.type must be fifo or tiered."
   }
 }
