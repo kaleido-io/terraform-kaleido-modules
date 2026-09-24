@@ -39,6 +39,7 @@ locals {
   has_backend_tls   = var.backend_tls != null
   has_oauth_tls     = local.has_oauth && try(var.oauth.tls, null) != null
   has_oauth_jwt_key = local.has_oauth && try(var.oauth.jwt.private_key_pem, null) != null
+  has_jwt_auth      = var.jwt_auth != null
 
   # Build the service config, stripping null fields at every level. The connector's JSON
   # schema types nested blocks strictly (no nullables), so an explicit null is rejected —
@@ -143,6 +144,26 @@ locals {
     } : { (k) = v } if v != null
   ]...)
 
+  jwt_cache = try(var.jwt_auth.cache, null) == null ? null : merge([
+    for k, v in {
+      refreshAhead = var.jwt_auth.cache.refresh_ahead
+    } : { (k) = v } if v != null
+  ]...)
+
+  jwt_block = !local.has_jwt_auth ? null : merge([
+    for k, v in {
+      issuer     = var.jwt_auth.issuer
+      subject    = var.jwt_auth.subject
+      audience   = var.jwt_auth.audience
+      privateKey = { fileRef = "#jwt-auth.signing.key" }
+      kid        = var.jwt_auth.kid
+      algorithm  = var.jwt_auth.algorithm
+      expiry     = var.jwt_auth.expiry
+      claims     = var.jwt_auth.claims
+      cache      = local.jwt_cache
+    } : { (k) = v } if v != null
+  ]...)
+
   config_json = merge([
     for k, v in {
       url                       = var.url
@@ -159,6 +180,7 @@ locals {
       auth                      = local.has_backend_auth ? { credSetRef = "backend_auth" } : null
       tls                       = local.backend_tls
       oauth                     = local.oauth_block
+      jwt                       = local.jwt_block
     } : { (k) = v } if v != null
   ]...)
 
@@ -207,5 +229,10 @@ locals {
         }
       }
     } : {},
+    local.has_jwt_auth ? {
+      "jwt-auth" = {
+        files = { "signing.key" = { type = "pem", data = { text = var.jwt_auth.private_key_pem } } }
+      }
+    } : {}
   )
 }
