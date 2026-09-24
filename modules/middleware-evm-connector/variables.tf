@@ -89,6 +89,17 @@ variable "network" {
 
 # ─── Config profile values (one variable per upstream config type) ────────────
 # Schemas mirror <upstream connector definitions source>/evm/config_types/*.yaml.
+#
+# Each variable is the value of the connector's default profile for that config type. Left null, the
+# profile takes the chain's default from the platform catalog, when the catalog has one for the
+# ecosystem and network, and otherwise the connector's own defaults. A value that is set is deep
+# merged into the chain's default, so only the settings given change.
+
+variable "track_chain_defaults" {
+  type        = bool
+  default     = false
+  description = "Follow the platform catalog's chain defaults as they change. By default the defaults are read once, when the connector is first deployed (or its ecosystem or network changes), and held; a check warns when the catalog has since changed."
+}
 
 variable "confirmations" {
   # No defaults inside the object: a value the caller leaves out is left to the connector, rather
@@ -102,14 +113,14 @@ variable "confirmations" {
     }))
   })
   default     = null
-  description = "evm.confirmations — number of confirmations before a transaction is considered final, plus optional resubmission policy. Omit to use the connector's defaults."
+  description = "evm.confirmations — number of confirmations before a transaction is considered final, plus optional resubmission policy. Omit to use the chain's default from the platform catalog (for example 12 on Ethereum mainnet), or the connector's where the catalog has none."
 }
 
 variable "gas_estimation" {
   type = object({
     scaleFactor = optional(number, 1.0)
   })
-  default     = {}
+  default     = null
   description = "evm.gasEstimation"
 }
 
@@ -171,7 +182,7 @@ variable "gas_pricing" {
       gasPrice             = optional(string)
     }))
   })
-  default     = {}
+  default     = null
   description = "evm.gasPricing — format (eip1559|legacy), source (tagged union: fixedGasPrice | gasOracleAPI | rpcEndpoint), auto-increment, and caps."
 }
 
@@ -179,7 +190,7 @@ variable "nonce_assignment" {
   type = object({
     previousTxnsCondition = optional(string)
   })
-  default     = {}
+  default     = null
   description = "evm.nonceAssignment"
 }
 
@@ -192,7 +203,7 @@ variable "submission" {
       minInterval        = optional(string)
     })))
   })
-  default     = {}
+  default     = null
   description = "evm.submission — error-type matchers keyed by submission error category."
 }
 
@@ -200,10 +211,10 @@ variable "transaction_serialization" {
   type = object({
     format = optional(string)
   })
-  default     = {}
+  default     = null
   description = "evm.transactionSerialization — format is auto (derive from the gas price fields, the default) or original (pre-EIP-155 legacy, without the chain ID in the signed payload)."
   validation {
-    condition     = contains(["auto", "original"], coalesce(var.transaction_serialization.format, "auto"))
+    condition     = contains(["auto", "original"], coalesce(try(var.transaction_serialization.format, null), "auto"))
     error_message = "transaction_serialization.format must be auto or original."
   }
 }
@@ -236,7 +247,7 @@ variable "block_events" {
     minWait = optional(string, "500ms")
     maxWait = optional(string, "5s")
   })
-  default     = {}
+  default     = null
   description = "evm.blockEventsConfig — debounce timings for the latest-block poller."
 }
 
@@ -283,7 +294,7 @@ variable "transaction_events" {
     })))
     unfiltered = optional(bool)
   })
-  default     = {}
+  default     = null
   description = "evm.transactionEventsConfig — block-walking event stream tuning. eventMode is one of all|require_decoded|filter_decoded."
 }
 
@@ -299,6 +310,6 @@ variable "contract_event_listener" {
       event = optional(any)
     })))
   })
-  default     = {}
+  default     = null
   description = "evm.contractEventListener — block-walking listener bound to a contract address + event ABI."
 }

@@ -102,6 +102,59 @@ resource "kaleido_platform_connector_config_type" "this" {
   name        = each.key
 }
 
+# ─── Chain defaults (platform catalog) ─────────────────────────────────────────
+
+# The platform catalog's default profile values for the ecosystem and network - the values the
+# console applies when it configures a connector. There are none for a chain with no ecosystem.
+data "kaleido_platform_catalog_web3ecosystem_defaults" "chain" {
+  count     = var.ecosystem == null ? 0 : 1
+  ecosystem = var.ecosystem.name
+  network   = try(var.network.name, null)
+}
+
+# The chain defaults as they were when first applied, one per config type, so a change to the catalog
+# never silently changes a deployed connector. A new ecosystem or network takes a fresh copy, and a
+# config type the catalog adds later is picked up when it first appears.
+resource "terraform_data" "chain_default" {
+  for_each         = var.track_chain_defaults ? {} : local.catalog_profile_values
+  input            = each.value
+  triggers_replace = [try(var.ecosystem.name, null), try(var.network.name, null)]
+  lifecycle {
+    ignore_changes = [input]
+  }
+}
+
+locals {
+  # JSON-encoded profile values, keyed by config type.
+  catalog_profile_values = try(data.kaleido_platform_catalog_web3ecosystem_defaults.chain[0].config_profiles, {})
+  chain_profile_values = var.track_chain_defaults ? local.catalog_profile_values : {
+    for t, d in terraform_data.chain_default : t => d.output
+  }
+
+  # Each profile's value is the caller's merged into the chain default: settings the caller leaves out,
+  # or null, keep the chain's value. The merge is also made against the catalog's current defaults, to
+  # tell when a held default that has since changed would change a deployed profile.
+  caller_profile_json = { for t, v in local.profile_values : t => v == null ? "null" : jsonencode(v) }
+  profile_value_json = {
+    for t, j in local.caller_profile_json : t => provider::kaleido::merge_json(lookup(local.chain_profile_values, t, "{}"), j)
+  }
+  current_profile_value_json = {
+    for t, j in local.caller_profile_json : t => provider::kaleido::merge_json(lookup(local.catalog_profile_values, t, "{}"), j)
+  }
+
+  # Profiles whose value would change if the catalog's current defaults were taken.
+  stale_chain_defaults = sort([
+    for t, j in local.profile_value_json : t if local.current_profile_value_json[t] != j
+  ])
+}
+
+check "chain_defaults_current" {
+  assert {
+    condition     = length(local.stale_chain_defaults) == 0
+    error_message = "The platform catalog's chain defaults have changed since this connector was deployed, which would change the ${join(", ", local.stale_chain_defaults)} profiles. The deployed profiles keep the values they were given. To take the current defaults, set track_chain_defaults = true, or replace module.<name>.terraform_data.chain_default."
+  }
+}
+
 # ─── Config profiles (one per type) ───────────────────────────────────────────
 
 resource "kaleido_platform_connector_config_profile" "this" {
@@ -110,8 +163,7 @@ resource "kaleido_platform_connector_config_profile" "this" {
   service     = kaleido_platform_service.this.id
   name        = each.key
   config_type = each.key
-  # A variable left null sends an empty profile, so every value is the connector's default.
-  value_json  = each.value == null ? "{}" : jsonencode(each.value)
+  value_json  = local.profile_value_json[each.key]
   depends_on  = [kaleido_platform_connector_config_type.this]
 }
 

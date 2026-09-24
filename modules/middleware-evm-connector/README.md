@@ -27,16 +27,43 @@ variables.
 | `jsonrpc_auth` | `null` | Basic-auth credentials for the JSON-RPC endpoint (sensitive) |
 | `ecosystem` | `null` | Ecosystem metadata (e.g. `{ name = "ethereum", displayName = "Ethereum" }`) |
 | `network` | `null` | Network metadata (e.g. `{ name = "ethereum-mainnet", chainId = "1" }`) |
-| `confirmations` | `null` | `evm.confirmations` — confirmation count and resubmission policy; omit for the connector's defaults |
-| `gas_estimation` | `{}` | `evm.gasEstimation` — gas estimate scale factor |
-| `gas_pricing` | `{}` | `evm.gasPricing` — fee format, source, auto-increment, and caps |
-| `nonce_assignment` | `{}` | `evm.nonceAssignment` |
+| `track_chain_defaults` | `false` | Follow the platform catalog's chain defaults as they change, rather than holding them from the first deploy (see [Chain defaults](#chain-defaults)) |
+| `confirmations` | `null` | `evm.confirmations` — confirmation count and resubmission policy |
+| `gas_estimation` | `null` | `evm.gasEstimation` — gas estimate scale factor |
+| `gas_pricing` | `null` | `evm.gasPricing` — fee format, source, auto-increment, and caps |
+| `nonce_assignment` | `null` | `evm.nonceAssignment` |
 | `prioritization` | `null` | `evm.prioritization` — nonce assignment order: `fifo` or `tiered`. Omitted, no profile is created or bound and nonces are assigned in arrival order |
-| `submission` | `{}` | `evm.submission` — error-type matchers for submission retries |
-| `transaction_serialization` | `{}` | `evm.transactionSerialization` — `format`: `auto` or `original` |
-| `block_events` | `{}` | `evm.blockEventsConfig` — latest-block poller debounce timings |
-| `transaction_events` | `{}` | `evm.transactionEventsConfig` — block-walking event stream tuning |
-| `contract_event_listener` | `{}` | `evm.contractEventListener` — contract address + event ABI listener |
+| `submission` | `null` | `evm.submission` — error-type matchers for submission retries |
+| `transaction_serialization` | `null` | `evm.transactionSerialization` — `format`: `auto` or `original` |
+| `block_events` | `null` | `evm.blockEventsConfig` — latest-block poller debounce timings |
+| `transaction_events` | `null` | `evm.transactionEventsConfig` — block-walking event stream tuning |
+| `contract_event_listener` | `null` | `evm.contractEventListener` — contract address + event ABI listener |
+
+## Chain defaults
+
+Each config profile variable (`confirmations`, `gas_pricing`, …) is the value of the connector's
+default profile for that config type. A variable left `null` takes the **chain's default** from the
+platform catalog, for the `ecosystem` and `network` — the same values the console applies when it
+configures a connector, for example 12 confirmations with resubmission on for Ethereum mainnet. Where
+the catalog has no value for a type, or no `ecosystem` is set, the connector's own defaults apply.
+
+A value you set is **deep merged** into the chain's default, so only the settings you give change:
+`confirmations = { count = 20 }` on Ethereum mainnet keeps the catalog's resubmission settings.
+A setting you give wins, including `false` and `0`, and a list replaces the chain's list whole. A 
+setting you leave out, or set to `null`, keeps the chain's value, so a chain setting can be changed 
+but not removed: to turn resubmission off, set
+`resubmission = { enabled = false }`.
+
+The chain defaults are read when the connector is first deployed and then **held**, so a later change
+to the catalog never changes a deployed connector's profiles on its own. Changing `ecosystem` or
+`network` takes a fresh copy, and a config type the catalog gains a default for is picked up when it
+first appears. When the catalog has since changed in a way that would change a deployed profile, the
+plan shows a warning from the `chain_defaults_current` check. To take the current defaults, either:
+
+- set `track_chain_defaults = true` to follow the catalog from then on, with every change shown in
+  the plan, or
+- take them once, with `terraform apply -replace='module.<name>.terraform_data.chain_default["evm.confirmations"]'`.
+
 
 ## Usage
 
@@ -86,6 +113,8 @@ Drop-in `*.tfvars` files under `examples/`:
 | `utilities_api_id` | ID of the deployed EVM `utilities` standard API; `null` unless `deploy_utilities_api` is set |
 | `stream_factories` | Map of deployed stream factory IDs (`block_events`, `transaction_events`) |
 | `config_profiles` | Map of config-type name to deployed config profile ID |
+| `config_profile_values` | Map of config-type name to its deployed profile's JSON value |
+| `chain_defaults` | Map of config-type name to the catalog's default value (JSON) in use: held, or current when `track_chain_defaults` is set |
 
 The flow IDs exist because workflow **subflow bindings take an ID, not a name**
 (`subflowBindings: { <subflow>: { subflowId: "flw:..." } }`). Without them a

@@ -68,3 +68,13 @@ output "config_profiles" {
   value       = { for k, v in kaleido_platform_connector_config_profile.this : k => v.id }
   description = "Map of config-type name to deployed config profile ID."
 }
+
+output "config_profile_values" {
+  value       = local.profile_value_json
+  description = "Map of config-type name to the JSON value of its deployed config profile - the caller's value merged into the chain default from the platform catalog, or {} (the connector's defaults) where neither sets anything."
+}
+
+output "chain_defaults" {
+  value       = local.chain_profile_values
+  description = "Map of config-type name to the platform catalog's default value (JSON) that this connector uses: held from when it was deployed, or current when track_chain_defaults is set."
+}
