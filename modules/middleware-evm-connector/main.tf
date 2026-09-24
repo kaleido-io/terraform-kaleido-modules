@@ -169,10 +169,61 @@ resource "kaleido_platform_connector_config_profile" "this" {
 
 # ─── Connector flows ──────────────────────────────────────────────────────────
 
+locals {
+  # The connector flows this module deploys. To add one, add it here, add its
+  # kaleido_platform_connector_flow resource below, and add it to flow_deployed_version.
+  connector_flows = ["submission", "query"]
+}
+
+# The template versions the connector service stores for each flow, for "latest" and for the check
+# below. On a connector's first deploy these are read during apply, once the service exists.
+data "kaleido_platform_connector_template_versions" "flow" {
+  for_each    = toset(local.connector_flows)
+  environment = var.environment_id
+  service     = kaleido_platform_service.this.id
+  kind        = "connector_flow"
+  name        = each.key
+}
+
+locals {
+  # Each flow's version: pinned, the latest stored ("latest"), or null - held at its deployed version
+  # by the provider, which deploys the latest version when the flow is first created.
+  flow_version = {
+    for f, d in data.kaleido_platform_connector_template_versions.flow : f => (
+      lookup(var.flow_versions, f, null) == "latest" ? d.latest : lookup(var.flow_versions, f, null)
+    )
+  }
+  # A pinned submission version as one comparable number (2026.09.0 is 202600090000), or null when the
+  # flow is held or tracks latest. Terraform does not short-circuit ||, so comparisons with it must
+  # handle the null themselves.
+  submission_pin = can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", lookup(var.flow_versions, "submission", ""))) ? sum([
+    for i, p in split(".", var.flow_versions["submission"]) : tonumber(p) * pow(10000, 2 - i)
+  ]) : null
+
+  flow_deployed_version = {
+    submission = kaleido_platform_connector_flow.submission.version
+    query      = kaleido_platform_connector_flow.query.version
+  }
+
+  # Held flows the connector service now stores a newer version of.
+  held_flow_upgrades = {
+    for f, d in data.kaleido_platform_connector_template_versions.flow : f => d.latest
+    if !contains(keys(var.flow_versions), f) && local.flow_deployed_version[f] != d.latest
+  }
+}
+
+check "flow_versions_current" {
+  assert {
+    condition     = length(local.held_flow_upgrades) == 0
+    error_message = "Newer connector flow versions are available: ${join(", ", [for f, v in local.held_flow_upgrades : "${f} ${local.flow_deployed_version[f]} -> ${v}"])}. Held flows stay at their deployed version. To upgrade, set flow_versions, e.g. { ${join(", ", [for f, v in local.held_flow_upgrades : "${f} = \"${v}\""])} } to pin, or \"latest\" to track."
+  }
+}
+
 resource "kaleido_platform_connector_flow" "submission" {
   environment = var.environment_id
   service     = kaleido_platform_service.this.id
   name        = "submission"
+  version     = local.flow_version["submission"]
   # Bound by ID, not name: the connector resolves a profile once, at deploy or upgrade, so a profile
   # replaced under the same name would leave the flow on the deleted one with no diff in the plan.
   config_profiles = {
@@ -186,6 +237,7 @@ resource "kaleido_platform_connector_flow" "query" {
   environment = var.environment_id
   service     = kaleido_platform_service.this.id
   name        = "query"
+  version     = local.flow_version["query"]
 }
 
 # ─── Stream factories ─────────────────────────────────────────────────────────

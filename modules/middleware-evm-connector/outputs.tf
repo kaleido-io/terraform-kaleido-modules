@@ -41,6 +41,16 @@ output "flow_ids" {
   description = "Map of connector flow name to deployed flow ID."
 }
 
+output "flow_versions" {
+  value       = local.flow_deployed_version
+  description = "Map of connector flow name to the template version it is deployed at."
+}
+
+output "latest_flow_versions" {
+  value       = { for f, d in data.kaleido_platform_connector_template_versions.flow : f => d.latest }
+  description = "Map of connector flow name to the newest template version the connector service stores."
+}
+
 output "standard_api_name" {
   value       = kaleido_platform_connector_standard_api.evm.name
   description = "Name of the deployed EVM standard API."

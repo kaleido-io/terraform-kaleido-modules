@@ -27,6 +27,7 @@ variables.
 | `jsonrpc_auth` | `null` | Basic-auth credentials for the JSON-RPC endpoint (sensitive) |
 | `ecosystem` | `null` | Ecosystem metadata (e.g. `{ name = "ethereum", displayName = "Ethereum" }`) |
 | `network` | `null` | Network metadata (e.g. `{ name = "ethereum-mainnet", chainId = "1" }`) |
+| `flow_versions` | `{}` | Template version per connector flow: a version to pin, `"latest"` to track, or omit to hold (see [Connector flow versions](#connector-flow-versions)) |
 | `track_chain_defaults` | `false` | Follow the platform catalog's chain defaults as they change, rather than holding them from the first deploy (see [Chain defaults](#chain-defaults)) |
 | `confirmations` | `null` | `evm.confirmations` — confirmation count and resubmission policy |
 | `gas_estimation` | `null` | `evm.gasEstimation` — gas estimate scale factor |
@@ -64,6 +65,67 @@ plan shows a warning from the `chain_defaults_current` check. To take the curren
   the plan, or
 - take them once, with `terraform apply -replace='module.<name>.terraform_data.chain_default["evm.confirmations"]'`.
 
+
+## Connector flow versions
+
+Each connector flow (`submission`, `query`) runs a version of the connector's flow template. New
+platform releases add template versions; `flow_versions` decides when a flow moves to one. There are
+three strategies, set per flow.
+
+**Held (the default).** Leave the flow out. It is deployed at the latest version and then stays there,
+so a platform release never upgrades it on its own. When a newer version is available the plan shows
+a warning from the `flow_versions_current` check, naming the version to move to.
+
+```hcl
+module "evm" {
+  # ...
+  # flow_versions not set: both flows held at the version they were first deployed at
+}
+```
+
+**Pinned.** Set a version. The flow is deployed or upgraded to exactly that version, and moves only
+when you change it. A pinned flow is never warned about.
+
+```hcl
+  flow_versions = {
+    submission = "2026.09.0"
+  }
+```
+
+**Latest.** Set `"latest"`. The flow is upgraded whenever the connector service stores a newer
+version, and each upgrade appears in the plan before it is applied.
+
+```hcl
+  flow_versions = {
+    query = "latest"
+  }
+```
+
+Strategies can be mixed, for example a pinned `submission` and a tracking `query`. The
+`flow_versions` output shows the version each flow is deployed at, and `latest_flow_versions` the
+newest version the connector stores.
+
+### Changing strategy
+
+| From | To | What you write | What happens |
+|------|----|----------------|--------------|
+| Held or pinned | A newer pin | `submission = "2026.10.0"` | The flow is upgraded to that version |
+| Held or pinned | Latest | `submission = "latest"` | The flow is upgraded to the latest version now, and to each newer one after |
+| Pinned or latest | Held | Remove the flow from `flow_versions` | Nothing changes: the flow stays at its deployed version, and the check warns when a newer one is available |
+| Latest | Pinned | `submission = "<version it is at>"` | Nothing changes: the flow stops following new versions |
+| Any | An older version | `submission = "2026.07.0"` | Refused at plan time: connector flows only move forward |
+
+To upgrade a pinned flow, change its version, or set it to `"latest"`, and run `terraform plan`. The
+plan shows the flow's `version` changing, which is the upgrade. Applying it upgrades the flow in place:
+it keeps its ID and its config profile bindings. Pinning to a version the connector does not store,
+or no longer supports, fails at apply with the connector's error; `latest_flow_versions` shows what is
+available.
+
+`prioritization` needs `submission` at 2026.09.0 or later: pinning it earlier while `prioritization`
+is set fails at plan time.
+
+The `evm` and `utilities` standard APIs, and the config types, are deployed at the connector's latest
+version and are not upgraded by this module.
 
 ## Usage
 
@@ -108,6 +170,8 @@ Drop-in `*.tfvars` files under `examples/`:
 | `query_flow_name` | Name of the deployed query connector flow |
 | `query_flow_id` | ID of the deployed query connector flow |
 | `flow_ids` | Map of connector flow name to deployed flow ID (`submission`, `query`) |
+| `flow_versions` | Map of connector flow name to the template version it is deployed at |
+| `latest_flow_versions` | Map of connector flow name to the newest template version the connector stores |
 | `standard_api_name` | Name of the deployed EVM standard API |
 | `standard_api_id` | ID of the deployed EVM standard API |
 | `utilities_api_id` | ID of the deployed EVM `utilities` standard API; `null` unless `deploy_utilities_api` is set |

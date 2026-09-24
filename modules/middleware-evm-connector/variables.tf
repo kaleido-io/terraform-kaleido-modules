@@ -38,6 +38,20 @@ variable "database_name" {
   description = "Optional external database name for the EVMConnector service. Required only on platform instances configured for externally-provisioned databases; omit for managed-database instances."
 }
 
+variable "flow_versions" {
+  type        = map(string)
+  default     = {}
+  description = "Template version of each connector flow, keyed by flow name (submission, query). A version (e.g. \"2026.09.0\") pins the flow there; \"latest\" upgrades it whenever the connector service stores a newer version. A flow left out is deployed at the latest version and then held there until it is pinned or set to latest. Versions only move forward."
+  validation {
+    condition     = alltrue([for f in keys(var.flow_versions) : contains(local.connector_flows, f)])
+    error_message = "flow_versions keys must be connector flow names: ${join(", ", local.connector_flows)}."
+  }
+  validation {
+    condition     = alltrue([for v in values(var.flow_versions) : v == "latest" || can(regex("^[0-9]+\\.[0-9]+\\.[0-9]+$", v))])
+    error_message = "Each flow_versions value must be \"latest\" or a version such as \"2026.09.0\"."
+  }
+}
+
 variable "deploy_utilities_api" {
   type        = bool
   default     = false
@@ -239,6 +253,11 @@ variable "prioritization" {
   validation {
     condition     = contains(["fifo", "tiered"], coalesce(try(var.prioritization.type, null), "fifo"))
     error_message = "prioritization.type must be fifo or tiered."
+  }
+  # The submission flow's prioritization slot was added in 2026.09.0; an earlier version cannot bind it.
+  validation {
+    condition     = var.prioritization == null || coalesce(local.submission_pin, 202600090000) >= 202600090000
+    error_message = "prioritization needs the submission flow at version 2026.09.0 or later; flow_versions pins it earlier."
   }
 }
 
