@@ -79,7 +79,7 @@ variable "backend_auth" {
   })
   default     = null
   sensitive   = true
-  description = "Optional HTTP basic-auth credentials for the backend. When set, the module registers them as a credSet named 'backend_auth' on the service and references it from the config (auth.credSetRef = \"backend_auth\"). Mutually exclusive with oauth and a static Authorization header."
+  description = "Optional HTTP basic-auth credentials for the backend. When set, the module registers them as a credSet named 'backend_auth' on the service and references it from the config (basicauth.credSetRef = \"backend_auth\"). Mutually exclusive with oauth and a static Authorization header."
 }
 
 variable "backend_tls" {
