@@ -177,7 +177,7 @@ locals {
       headers                   = var.endpoint.headers
       passthroughHeadersEnabled = var.endpoint.passthroughHeadersEnabled
       proxy                     = local.endpoint_proxy
-      auth                      = local.has_backend_auth ? { credSetRef = "backend_auth" } : null
+      basicauth                 = local.has_backend_auth ? { credSetRef = "backend_auth" } : null
       tls                       = local.backend_tls
       oauth                     = local.oauth_block
       jwt                       = local.jwt_block
