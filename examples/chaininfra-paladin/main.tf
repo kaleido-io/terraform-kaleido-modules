@@ -218,6 +218,20 @@ module "paladin_node" {
   depends_on = [module.besu_network, module.besu_node, module.evm_gateway]
 }
 
+module "paladin_connector" {
+  source = "../../modules/middleware-paladin-connector"
+
+  environment_id         = local.environment_id
+  key_manager_service_id = kaleido_platform_service.kms_0.id
+  paladin_node_service_id = module.paladin_node[0].service_id
+  network = {
+    name        = var.network_name
+    displayName = var.network_name
+  }
+
+  depends_on = [kaleido_platform_service.wfe_0]
+}
+
 # Outputs
 
 output "network_id" {
@@ -246,4 +260,12 @@ output "noto_factory_address" {
 
 output "pente_factory_address" {
   value = module.pente.factory_address
+}
+
+output "paladin_connector_service_id" {
+  value = module.paladin_connector.service_id
+}
+
+output "paladin_connector_api_name" {
+  value = module.paladin_connector.standard_api_name
 }
