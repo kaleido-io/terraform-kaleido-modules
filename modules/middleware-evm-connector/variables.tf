@@ -91,9 +91,17 @@ variable "confirmations" {
       enabled = optional(bool, false)
       timeout = optional(string, "5m")
     }))
+    receipt = optional(object({
+      decodeErrors      = optional(bool)
+      decodeEvents      = optional(bool)
+      includeBinaryLogs = optional(bool)
+      includeLogsBloom  = optional(bool)
+      omitSolidityDef   = optional(bool)
+      outputFormat      = optional(string)
+    }))
   })
   default     = {}
-  description = "evm.confirmations — number of confirmations before a transaction is considered final, plus optional resubmission policy."
+  description = "evm.confirmations — number of confirmations before a transaction is considered final, optional resubmission policy, and how the confirmed receipt is serialized (logs are omitted unless includeBinaryLogs or decodeEvents is set)."
 }
 
 variable "gas_estimation" {
