@@ -1,0 +1,6 @@
+kaleido_platform_api      = "<your-kaleido-platform-api>"
+kaleido_platform_username = "<your-kaleido-platform-username>"
+kaleido_platform_password = "<your-kaleido-platform-password>"
+
+jsonrpc_url = "<your-sepolia-rpc-url>"
+# jsonrpc_auth = { username = "REPLACE_ME", password = "REPLACE_ME" }
