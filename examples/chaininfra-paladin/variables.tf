@@ -59,9 +59,19 @@ variable "paladin_repo" {
   default     = "https://github.com/LFDT-Paladin/paladin"
 }
 
+variable "paladin_domains" {
+  type        = set(string)
+  description = "Paladin domains to deploy and configure on the nodes: any of noto, pente and zeto."
+  default     = ["noto", "pente", "zeto"]
+  validation {
+    condition     = length(setsubtract(var.paladin_domains, ["noto", "pente", "zeto"])) == 0
+    error_message = "paladin_domains may only contain noto, pente and zeto."
+  }
+}
+
 variable "domains" {
   type        = any
-  description = "Additional Paladin domain config keyed by domain name, merged over the noto/pente domains this example deploys."
+  description = "Additional Paladin domain config keyed by domain name, merged over the noto/pente/zeto domains this example deploys."
   default     = {}
 }
 
@@ -99,4 +109,29 @@ variable "paladin_wallet_name" {
   type        = string
   description = "Name of the KMS hdwallet backing the Paladin nodes' keys."
   default     = "paladin-wallet"
+}
+
+variable "zeto_contracts_archive_url" {
+  type        = string
+  description = "Zeto contracts archive (http(s):// or file: URL). Must match the Zeto version of the Paladin node image (v0.2.2 for Paladin v1.0.0)."
+  default     = "https://github.com/LFDT-Paladin/zeto/releases/download/v0.2.2/zeto-contracts-v0.2.2.tar.gz"
+}
+
+variable "zeto_proving_keys_archive_url" {
+  type        = string
+  description = "Zeto proving keys archive (http(s):// or file: URL). A file: URL also checks the verifier contracts against it at plan time."
+  default     = "https://github.com/LFDT-Paladin/zeto/releases/download/v0.2.2/zeto-test-proving-keys-v0.2.2.tar.gz"
+}
+
+variable "zeto_circuits_archive_url" {
+  type        = string
+  description = "Zeto circuits (wasm) archive (http(s):// or file: URL)."
+  default     = "https://github.com/LFDT-Paladin/zeto/releases/download/v0.2.2/zeto-wasm-v0.2.2.tar.gz"
+}
+
+variable "zeto_wallet_seeds" {
+  type        = list(string)
+  description = "BIP39 mnemonic per Paladin node (in node order) for the zeto wallet that derives `zeto.*` identities. Nodes without an entry fall back to a platform-generated seed, which later config updates may not preserve, so set explicit seeds for stable zeto identities."
+  default     = []
+  sensitive   = true
 }

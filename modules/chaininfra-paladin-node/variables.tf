@@ -120,11 +120,11 @@ variable "network_registry" {
   default     = null
   description = "The network's EVM registry configuration. When this node is the registry node in deploy mode, the module reads back the deployed registry address and exposes it as the registry_address output."
   validation {
-    condition     = var.network_registry == null || contains(["deploy", "existing"], var.network_registry.mode)
+    condition     = var.network_registry == null ? true : contains(["deploy", "existing"], var.network_registry.mode)
     error_message = "network_registry.mode must be one of: deploy, existing."
   }
   validation {
-    condition     = var.network_registry == null || var.network_registry.mode != "deploy" || var.network_registry.registry_node != null
+    condition     = var.network_registry == null ? true : (var.network_registry.mode != "deploy" || var.network_registry.registry_node != null)
     error_message = "network_registry.registry_node is required when network_registry.mode = deploy."
   }
 }

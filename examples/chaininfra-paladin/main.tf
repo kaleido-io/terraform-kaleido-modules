@@ -143,6 +143,7 @@ module "evm_connector" {
 
 module "noto" {
   source = "../../modules/chaininfra-paladin-domain-noto"
+  count  = contains(var.paladin_domains, "noto") ? 1 : 0
 
   paladin_repo         = var.paladin_repo
   paladin_ref          = var.paladin_ref
@@ -159,6 +160,7 @@ module "noto" {
 
 module "pente" {
   source = "../../modules/chaininfra-paladin-domain-pente"
+  count  = contains(var.paladin_domains, "pente") ? 1 : 0
 
   paladin_repo         = var.paladin_repo
   paladin_ref          = var.paladin_ref
@@ -174,8 +176,28 @@ module "pente" {
   depends_on = [module.noto]
 }
 
+module "zeto" {
+  source = "../../modules/chaininfra-paladin-domain-zeto"
+  count  = contains(var.paladin_domains, "zeto") ? 1 : 0
+
+  paladin_repo             = var.paladin_repo
+  paladin_ref              = var.paladin_ref
+  contracts_archive_url    = var.zeto_contracts_archive_url
+  proving_keys_archive_url = var.zeto_proving_keys_archive_url
+  circuits_archive_url     = var.zeto_circuits_archive_url
+  environment_id           = local.environment_id
+  contracts_service_id     = kaleido_platform_service.cms_0.id
+  connector_service_id     = module.evm_connector.service_id
+  connector_api_name       = module.evm_connector.standard_api_name
+
+  signing_key_address = var.signing_key_uri != null ? null : coalesce(var.signing_key_address, kaleido_platform_kms_key.domain_deployer.address)
+  signing_key_uri     = var.signing_key_uri
+
+  depends_on = [module.pente]
+}
+
 locals {
-  domains = merge(module.noto.domain, module.pente.domain, var.domains)
+  domains = merge(merge(concat(module.noto[*].domain, module.pente[*].domain, module.zeto[*].domain)...), var.domains)
 }
 
 # Paladin Network + Nodes
@@ -208,6 +230,11 @@ module "paladin_node" {
   wallets = {
     kms_key_store   = kaleido_platform_kms_wallet.wallet_0.name
     kms_folder_path = local.node_names[count.index]
+
+    # Zeto keys live outside the Key Manager: identities matching the prefix (e.g.
+    # zeto.alice) are derived from the node's zeto wallet seed
+    zeto_wallet_prefix = "^zeto\\."
+    zeto_wallet_seed   = try(var.zeto_wallet_seeds[count.index], null)
   }
 
   domains = local.domains
@@ -241,9 +268,13 @@ output "registry_address" {
 }
 
 output "noto_factory_address" {
-  value = module.noto.factory_address
+  value = one(module.noto[*].factory_address)
 }
 
 output "pente_factory_address" {
-  value = module.pente.factory_address
+  value = one(module.pente[*].factory_address)
+}
+
+output "zeto_factory_address" {
+  value = one(module.zeto[*].factory_address)
 }
