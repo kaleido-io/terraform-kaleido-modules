@@ -44,7 +44,8 @@ module "block_indexer" {
   stack_id                    = module.besu_network.stack_id
   evm_gateway_service_id      = module.evm_gateway.service_id
   contract_manager_service_id = kaleido_platform_service.cms_0.id
-  hostname                    = "${var.besu_network_name}-block-indexer"
+  # Hostnames are unique across the platform account, so qualify with the environment ID
+  hostname = "${var.besu_network_name}-bi-${replace(local.environment_id, ":", "")}"
 }
 
 # Key Management
