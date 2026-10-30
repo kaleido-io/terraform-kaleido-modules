@@ -24,7 +24,7 @@ domain config is merged into every Paladin node, so all nodes share the same fac
 | [`middleware-evm-connector`](../../modules/middleware-evm-connector) | EVM Connector whose standard API submits the idempotent domain factory deploys |
 | [`chaininfra-paladin-domain-noto`](../../modules/chaininfra-paladin-domain-noto) | Builds and deploys the noto factory contracts and emits the `noto` domain config |
 | [`chaininfra-paladin-domain-pente`](../../modules/chaininfra-paladin-domain-pente) | Builds and deploys the pente factory contracts and emits the `pente` domain config |
-| [`chaininfra-paladin-domain-zeto`](../../modules/chaininfra-paladin-domain-zeto) | Builds and deploys the zeto factory, `Zeto_Anon` and its verifiers, registers `Zeto_Anon`, and emits the `zeto` domain config |
+| [`chaininfra-paladin-domain-zeto`](../../modules/chaininfra-paladin-domain-zeto) | Builds and deploys the zeto factory and the `Zeto_Anon` and `Zeto_AnonNullifier` token implementations with their verifiers and libraries, registers them, and emits the `zeto` domain config |
 | [`chaininfra-paladin-network`](../../modules/chaininfra-paladin-network) | The `PaladinNetwork` and `PaladinStack`, with a new EVM registry deployed via node 1 (`registry_mode = "deploy"`) |
 | [`chaininfra-paladin-node`](../../modules/chaininfra-paladin-node) | The Paladin nodes (`<prefix>-1` … `<prefix>-N`), each with its own KMS folder, a zeto wallet, and the noto/pente/zeto domains |
 
@@ -62,10 +62,12 @@ domain config is merged into every Paladin node, so all nodes share the same fac
 | `paladin_wallet_name` | `paladin-wallet` | Name of the KMS hdwallet backing the Paladin node keys |
 | `paladin_repo` | `https://github.com/LFDT-Paladin/paladin` | Repository the domain contracts are sourced from — override to build from a fork |
 | `paladin_ref` | pinned commit SHA | Git ref (branch or commit SHA) the domain contracts are sourced from |
+| `node_runtime_size` | `Large` with `Zeto_AnonNullifier`, else `Small` | Paladin node runtime size; nodes proving `Zeto_AnonNullifier` transfers run out of memory when `Small`. With `Zeto_AnonNullifier`, the nodes' sequencer `stateTimeout` is also raised to `2m`, so batch proofs can finish |
 | `paladin_domains` | `["noto", "pente", "zeto"]` | Domains to deploy and configure on the nodes — e.g. `["zeto"]` for a Zeto-only network |
 | `domains` | `{}` | Additional Paladin domain config keyed by domain name, merged over the noto/pente/zeto domains |
 | `signing_key_address` | `null` | Deploy signer for the domain factories as a `0x…` address, instead of the `domain-deployer` key |
 | `signing_key_uri` | `null` | Deploy signer for the domain factories as a Key Manager key URI, instead of the `domain-deployer` key |
+| `zeto_implementations` | `["Zeto_Anon", "Zeto_AnonNullifier"]` | Zeto token implementations to register with the zeto factory |
 | `zeto_contracts_archive_url` / `zeto_proving_keys_archive_url` / `zeto_circuits_archive_url` | Zeto v0.2.2 release assets | Zeto release archives (`http(s)://` or `file:` URLs); a `file:` proving keys archive enables the verifier check |
 | `zeto_wallet_seeds` | `[]` | BIP39 mnemonic per node (in node order) for the zeto wallet that derives `zeto.*` identities (sensitive) |
 

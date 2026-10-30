@@ -41,6 +41,12 @@ variable "node_count" {
   }
 }
 
+variable "node_runtime_size" {
+  type        = string
+  description = "PaladinNodeRuntime size of the nodes (ExtraSmall | Small | Medium | Large | ExtraLarge). Defaults to Large when the Zeto_AnonNullifier implementation is deployed, as its proofs need the memory, and Small otherwise."
+  default     = null
+}
+
 variable "node_name_prefix" {
   type        = string
   description = "Prefix for Paladin node names (`<prefix>-1` ... `<prefix>-N`)."
@@ -109,6 +115,12 @@ variable "paladin_wallet_name" {
   type        = string
   description = "Name of the KMS hdwallet backing the Paladin nodes' keys."
   default     = "paladin-wallet"
+}
+
+variable "zeto_implementations" {
+  type        = set(string)
+  description = "Zeto token implementations to register with the zeto factory: Zeto_Anon and/or Zeto_AnonNullifier."
+  default     = ["Zeto_Anon", "Zeto_AnonNullifier"]
 }
 
 variable "zeto_contracts_archive_url" {

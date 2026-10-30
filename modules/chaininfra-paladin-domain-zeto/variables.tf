@@ -17,9 +17,19 @@ variable "paladin_repo" {
   }
 }
 
+variable "implementations" {
+  type        = set(string)
+  default     = ["Zeto_Anon"]
+  description = "Zeto token implementations to register with the factory and configure in the domain: Zeto_Anon and/or Zeto_AnonNullifier. Tokens are deployed from the factory by implementation name. In join modes, list the implementations registered on the existing factory."
+  validation {
+    condition     = length(var.implementations) > 0 && length(setsubtract(var.implementations, ["Zeto_Anon", "Zeto_AnonNullifier"])) == 0
+    error_message = "implementations must list at least one of: Zeto_Anon, Zeto_AnonNullifier."
+  }
+}
+
 variable "contracts_archive_url" {
   type        = string
-  description = "Location of the Zeto contracts archive (.zip, .tar.gz, .tgz or .gz) holding the compiled Zeto_Anon token and Groth16 verifier contracts as Hardhat artifact JSON files, e.g. the zeto-contracts-<version>.tar.gz release asset. An http(s):// URL, or a local file as file:///abs/path or file:relative/path. Read on every plan. Its version must match the proving keys and circuits."
+  description = "Location of the Zeto contracts archive (.zip, .tar.gz, .tgz or .gz) holding the compiled token implementations, Groth16 verifiers and libraries as Hardhat artifact JSON files, e.g. the zeto-contracts-<version>.tar.gz release asset. An http(s):// URL, or a local file as file:///abs/path or file:relative/path. Read on every plan. Its version must match the proving keys and circuits."
   validation {
     condition     = can(regex("^(https?://|file:)", var.contracts_archive_url))
     error_message = "contracts_archive_url must be an http://, https:// or file: URL."
@@ -111,7 +121,7 @@ variable "signing_key_uri" {
 variable "mode" {
   type        = string
   default     = "deploy"
-  description = "`deploy` builds and deploys the zeto factory, verifiers and Zeto_Anon implementation, and registers the implementation with the factory. `join_with_builds` builds the contracts in this account's ContractManager (for ABI visibility) but uses a pre-existing deployment. `join` also uses a pre-existing deployment, with no ContractManager resources created."
+  description = "`deploy` builds and deploys the zeto factory and, for each of the implementations, its verifiers, libraries and token contract, and registers it with the factory. `join_with_builds` builds the contracts in this account's ContractManager (for ABI visibility) but uses a pre-existing deployment. `join` also uses a pre-existing deployment, with no ContractManager resources created."
   validation {
     condition     = contains(["deploy", "join", "join_with_builds"], var.mode)
     error_message = "mode must be one of: deploy, join, join_with_builds."
@@ -121,7 +131,7 @@ variable "mode" {
 variable "factory_address" {
   type        = string
   default     = null
-  description = "Address of an already-deployed zeto factory with Zeto_Anon registered (ERC1967 proxy address). Required when mode = join or mode = join_with_builds."
+  description = "Address of an already-deployed zeto factory with the implementations registered (ERC1967 proxy address). Required when mode = join or mode = join_with_builds."
   validation {
     condition     = var.mode == "deploy" || var.factory_address != null
     error_message = "factory_address is required when mode = join or mode = join_with_builds."
