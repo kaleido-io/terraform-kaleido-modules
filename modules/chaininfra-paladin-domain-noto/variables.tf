@@ -70,7 +70,7 @@ variable "signing_key_uri" {
   default     = null
   description = "URI of the intended Noto factory deployer."
   validation {
-    condition     = var.signing_key_uri == null || startswith(var.signing_key_uri, "kld://")
+    condition     = var.signing_key_uri == null ? true : startswith(var.signing_key_uri, "kld://")
     error_message = "signing_key_uri must be a Kaleido Key Manager key URI starting with kld://."
   }
 }

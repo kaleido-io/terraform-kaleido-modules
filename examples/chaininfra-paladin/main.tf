@@ -6,6 +6,13 @@ resource "kaleido_platform_environment" "env_0" {
 locals {
   environment_id = var.environment_id != "" ? var.environment_id : kaleido_platform_environment.env_0[0].id
   node_names     = [for i in range(var.node_count) : "${var.node_name_prefix}-${i + 1}"]
+
+  # Proving with the Zeto_AnonNullifier circuits needs more memory than a Small node has,
+  # and a batch proof takes longer than the sequencer's default 10s state timeout, after
+  # which the transaction is re-assembled and the in-flight proof cancelled
+  zeto_nullifier    = contains(var.paladin_domains, "zeto") && contains(var.zeto_implementations, "Zeto_AnonNullifier")
+  node_runtime_size = coalesce(var.node_runtime_size, local.zeto_nullifier ? "Large" : "Small")
+  node_base_config  = local.zeto_nullifier ? { sequencerManager = { stateTimeout = "2m" } } : {}
 }
 
 # Base Ledger
@@ -44,7 +51,8 @@ module "block_indexer" {
   stack_id                    = module.besu_network.stack_id
   evm_gateway_service_id      = module.evm_gateway.service_id
   contract_manager_service_id = kaleido_platform_service.cms_0.id
-  hostname                    = "${var.besu_network_name}-block-indexer"
+  # Hostnames are unique across the platform account, so qualify with the environment ID
+  hostname = "${var.besu_network_name}-bi-${replace(local.environment_id, ":", "")}"
 }
 
 # Key Management
@@ -143,6 +151,7 @@ module "evm_connector" {
 
 module "noto" {
   source = "../../modules/chaininfra-paladin-domain-noto"
+  count  = contains(var.paladin_domains, "noto") ? 1 : 0
 
   paladin_repo         = var.paladin_repo
   paladin_ref          = var.paladin_ref
@@ -159,6 +168,7 @@ module "noto" {
 
 module "pente" {
   source = "../../modules/chaininfra-paladin-domain-pente"
+  count  = contains(var.paladin_domains, "pente") ? 1 : 0
 
   paladin_repo         = var.paladin_repo
   paladin_ref          = var.paladin_ref
@@ -174,8 +184,29 @@ module "pente" {
   depends_on = [module.noto]
 }
 
+module "zeto" {
+  source = "../../modules/chaininfra-paladin-domain-zeto"
+  count  = contains(var.paladin_domains, "zeto") ? 1 : 0
+
+  paladin_repo             = var.paladin_repo
+  paladin_ref              = var.paladin_ref
+  contracts_archive_url    = var.zeto_contracts_archive_url
+  proving_keys_archive_url = var.zeto_proving_keys_archive_url
+  circuits_archive_url     = var.zeto_circuits_archive_url
+  implementations          = var.zeto_implementations
+  environment_id           = local.environment_id
+  contracts_service_id     = kaleido_platform_service.cms_0.id
+  connector_service_id     = module.evm_connector.service_id
+  connector_api_name       = module.evm_connector.standard_api_name
+
+  signing_key_address = var.signing_key_uri != null ? null : coalesce(var.signing_key_address, kaleido_platform_kms_key.domain_deployer.address)
+  signing_key_uri     = var.signing_key_uri
+
+  depends_on = [module.pente]
+}
+
 locals {
-  domains = merge(module.noto.domain, module.pente.domain, var.domains)
+  domains = merge(merge(concat(module.noto[*].domain, module.pente[*].domain, module.zeto[*].domain)...), var.domains)
 }
 
 # Paladin Network + Nodes
@@ -199,6 +230,7 @@ module "paladin_node" {
   stack_id               = module.paladin_network.stack_id
   node_name              = local.node_names[count.index]
   key_manager_service_id = kaleido_platform_service.kms_0.id
+  runtime_size           = local.node_runtime_size
 
   base_ledger = {
     type               = "local"
@@ -208,9 +240,15 @@ module "paladin_node" {
   wallets = {
     kms_key_store   = kaleido_platform_kms_wallet.wallet_0.name
     kms_folder_path = local.node_names[count.index]
+
+    # Zeto keys live outside the Key Manager: identities matching the prefix (e.g.
+    # zeto.alice) are derived from the node's zeto wallet seed
+    zeto_wallet_prefix = "^zeto\\."
+    zeto_wallet_seed   = try(var.zeto_wallet_seeds[count.index], null)
   }
 
-  domains = local.domains
+  domains     = local.domains
+  base_config = local.node_base_config
 
   hostname         = var.publish_hostnames ? local.node_names[count.index] : null
   network_registry = module.paladin_network.registry
@@ -241,9 +279,13 @@ output "registry_address" {
 }
 
 output "noto_factory_address" {
-  value = module.noto.factory_address
+  value = one(module.noto[*].factory_address)
 }
 
 output "pente_factory_address" {
-  value = module.pente.factory_address
+  value = one(module.pente[*].factory_address)
+}
+
+output "zeto_factory_address" {
+  value = one(module.zeto[*].factory_address)
 }

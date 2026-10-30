@@ -4,3 +4,9 @@ kaleido_platform_password = "<your-kaleido-platform-password>"
 
 # Set environment_id to deploy into an existing environment instead of creating one
 # environment_id = "<your-environment-id>"
+
+# Domains to deploy (default: all three).
+# paladin_domains = ["noto", "pente"]
+
+# One BIP39 mnemonic per Paladin node for its zeto wallet (identities matching ^zeto\.)
+# zeto_wallet_seeds = ["<node-1 mnemonic>", "<node-2 mnemonic>", "<node-3 mnemonic>"]

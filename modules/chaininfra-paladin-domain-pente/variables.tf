@@ -70,7 +70,7 @@ variable "signing_key_uri" {
   default     = null
   description = "deploy signer as a Key Manager key URI (kaleido_platform_kms_key uri attribute, shape kld:///keystore/<wallet>/key/<path>). Exactly one of signing_key_address / signing_key_uri is required when mode = deploy."
   validation {
-    condition     = var.signing_key_uri == null || startswith(var.signing_key_uri, "kld://")
+    condition     = var.signing_key_uri == null ? true : startswith(var.signing_key_uri, "kld://")
     error_message = "signing_key_uri must be a Key Manager key URI starting with kld://."
   }
 }
