@@ -13,3 +13,4 @@ if ever necessary, but will be avoided if possible in preference to creating a n
 | [`middleware-evm-connector`](./middleware-evm-connector) | EVM connector — stack, runtime, service, and the full set of config profiles, connector flows, stream factories, and standard API/stream. |
 | [`middleware-btc-connector`](./middleware-btc-connector) | Bitcoin connector — stack, runtime, service, and its config profiles, flows, stream factories, and standard API/stream. |
 | [`middleware-http-connector`](./middleware-http-connector) | HTTP connector to a single backend service. Supports HTTP basic auth, OAuth 2.0 client-credentials, and TLS / mutual-TLS. |
+| [`middleware-jms-connector`](./middleware-jms-connector) | JMS connector to a Jakarta Messaging broker (IBM MQ, Solace, ActiveMQ Artemis, RabbitMQ). Uploads the vendor's client jars to the artifact registry; supports JNDI, TLS / mutual-TLS, and static producers. |
