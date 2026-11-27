@@ -157,4 +157,10 @@ resource "kaleido_platform_connector_standard_stream" "new_blocks" {
   service                   = kaleido_platform_service.this.id
   name                      = "newBlocks"
   config_profile_name_or_id = kaleido_platform_connector_config_profile.this["evm.blockEventsConfig"].name
+
+  # The newBlocks stream is deployed from the blockEvents stream factory. No
+  # attribute refers to the factory, so without this the two are created
+  # concurrently, and the deploy fails with KA141203 (stream factory not
+  # found) whenever it reaches the connector first.
+  depends_on = [kaleido_platform_connector_stream_factory.block_events]
 }
